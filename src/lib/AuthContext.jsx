@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { createAxiosClient } from "@base44/sdk/dist/utils/axios-client";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 
@@ -17,17 +16,28 @@ export function AuthProvider({ children }) {
     checkAppState();
   }, []);
 
+  function toAuthError(error, fallbackMessage) {
+    const reason = error?.data?.extra_data?.reason;
+    if (reason === "user_not_registered") {
+      return { type: "user_not_registered", message: error?.message || "User not registered" };
+    }
+    if (reason === "auth_required" || error?.status === 401 || error?.status === 403) {
+      return { type: "auth_required", message: error?.message || "Authentication required" };
+    }
+    return { type: "unknown", message: error?.message || fallbackMessage };
+  }
+
   async function checkUserAuth() {
     try {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      setAuthError(null);
     } catch (error) {
+      setUser(null);
       setIsAuthenticated(false);
-      if (error?.status === 401 || error?.status === 403) {
-        setAuthError({ type: "auth_required", message: "Authentication required" });
-      }
+      setAuthError(toAuthError(error, "Failed to authenticate user"));
     } finally {
       setIsLoadingAuth(false);
     }
@@ -35,32 +45,36 @@ export function AuthProvider({ children }) {
 
   async function checkAppState() {
     try {
+      setIsLoadingAuth(true);
       setIsLoadingPublicSettings(true);
       setAuthError(null);
-      const appClient = createAxiosClient({
-        baseURL: "/api/apps/public",
-        headers: { "X-App-Id": appParams.appId },
-        token: appParams.token,
-        interceptResponses: true
-      });
-      const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-      setAppPublicSettings(publicSettings);
-      if (appParams.token) {
-        await checkUserAuth();
-      } else {
-        setAuthError({ type: "auth_required", message: "Authentication required" });
-        setIsLoadingAuth(false);
+
+      if (!appParams.appId) {
+        setUser(null);
         setIsAuthenticated(false);
+        setAuthError({ type: "unknown", message: "Base44 app ID is missing." });
+        return;
       }
+
+      setAppPublicSettings({
+        id: appParams.appId,
+        appBaseUrl: appParams.appBaseUrl || null
+      });
+
+      if (!appParams.token) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthError({ type: "auth_required", message: "Authentication required" });
+        return;
+      }
+
+      await checkUserAuth();
     } catch (appError) {
-      const reason = appError?.data?.extra_data?.reason;
-      if (appError?.status === 403 && reason) {
-        setAuthError({ type: reason, message: appError.message });
-      } else {
-        setAuthError({ type: "unknown", message: appError?.message || "Failed to load app" });
-      }
-      setIsLoadingAuth(false);
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthError(toAuthError(appError, "Failed to load app"));
     } finally {
+      setIsLoadingAuth(false);
       setIsLoadingPublicSettings(false);
     }
   }
