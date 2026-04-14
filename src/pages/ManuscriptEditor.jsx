@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import moment from "moment";
 import "moment/locale/pt-br";
-import { ArrowLeft, BookOpen, Check, Clock, Eraser, Loader2, Pencil, Redo2, Star, Trash2, Undo2 } from "lucide-react";
+import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Eraser, Loader2, Pencil, Redo2, Star, Trash2, Undo2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -14,11 +14,11 @@ import "@/lib/theme";
 moment.locale("pt-br");
 
 const Font = Quill.import("formats/font");
-Font.whitelist = ["crimson", "merriweather", "lora", "source-serif", "inter"];
+Font.whitelist = ["source-sans", "inter", "crimson", "source-serif", "literata", "newsreader", "merriweather"];
 Quill.register(Font, true);
 
 const Size = Quill.import("attributors/style/size");
-Size.whitelist = ["14px", "16px", "18px", "20px", "24px", "30px"];
+Size.whitelist = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
 Quill.register(Size, true);
 
 const quillModules = {
@@ -28,7 +28,7 @@ const quillModules = {
       [{ size: Size.whitelist }],
       [{ header: [1, 2, 3, false] }],
       ["bold", "italic", "underline"],
-      [{ align: [] }],
+      [{ align: ["", "center", "right", "justify"] }],
       [{ list: "ordered" }, { list: "bullet" }],
       [{ color: [] }, { background: [] }],
       ["link"],
@@ -54,11 +54,14 @@ const quillModules = {
 const quillFormats = ["font", "size", "header", "bold", "italic", "underline", "align", "list", "bullet", "color", "background", "link"];
 
 const editorFonts = {
+  "'Source Sans 3', sans-serif": "source-sans",
+  "'Inter', sans-serif": "inter",
   "'Crimson Pro', serif": "crimson",
-  "'Merriweather', serif": "merriweather",
-  "'Lora', serif": "lora",
   "'Source Serif 4', serif": "source-serif",
-  "'Inter', sans-serif": "inter"
+  "'Literata', serif": "literata",
+  "'Newsreader', serif": "newsreader",
+  "'Merriweather', serif": "merriweather",
+  "'Lora', serif": "source-serif"
 };
 
 function countWords(html) {
@@ -113,6 +116,13 @@ export default function ManuscriptEditor() {
   const editorFont = user?.font_family || "'Crimson Pro', serif";
   const editorSize = user?.font_size || 18;
   const quillFontClass = editorFonts[editorFont] || "crimson";
+  const pageStyle = useMemo(
+    () => ({
+      "--editor-font": editorFont,
+      "--editor-size": `${editorSize}px`
+    }),
+    [editorFont, editorSize]
+  );
 
   const saveContent = useCallback(
     async (newContent) => {
@@ -250,12 +260,16 @@ export default function ManuscriptEditor() {
       </header>
 
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
             <div className="flex flex-wrap items-center gap-3">
               <span>{stats.words} palavras</span>
               <span>{stats.chars} caracteres</span>
               <span>Fonte {editorSize}px</span>
+              <span className="inline-flex items-center gap-1">
+                <AlignJustify className="h-3.5 w-3.5" />
+                Modo documento
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => runEditorCommand("undo")}>
@@ -275,8 +289,8 @@ export default function ManuscriptEditor() {
 
           <style>{`
             .writer-editor .ql-editor {
-              font-family: ${editorFont};
-              font-size: ${editorSize}px;
+              font-family: var(--editor-font);
+              font-size: var(--editor-size);
             }
             .writer-editor .ql-editor p {
               margin-bottom: 0.8em;
@@ -303,15 +317,18 @@ export default function ManuscriptEditor() {
               margin: 1rem 0;
               padding-left: 1rem;
             }
-            .ql-font-crimson { font-family: 'Crimson Pro', serif; }
-            .ql-font-merriweather { font-family: 'Merriweather', serif; }
-            .ql-font-lora { font-family: 'Lora', serif; }
-            .ql-font-source-serif { font-family: 'Source Serif 4', serif; }
+            .ql-font-source-sans { font-family: 'Source Sans 3', sans-serif; }
             .ql-font-inter { font-family: 'Inter', sans-serif; }
+            .ql-font-crimson { font-family: 'Crimson Pro', serif; }
+            .ql-font-source-serif { font-family: 'Source Serif 4', serif; }
+            .ql-font-literata { font-family: 'Literata', serif; }
+            .ql-font-newsreader { font-family: 'Newsreader', serif; }
+            .ql-font-merriweather { font-family: 'Merriweather', serif; }
           `}</style>
 
-          <div className="writer-editor overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-sm">
-            <ReactQuill
+          <div className="word-workspace rounded-[1.5rem] border border-border/70 bg-[hsl(var(--muted)/0.55)] p-3 shadow-sm sm:p-5">
+            <div className="writer-editor word-document overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_20px_60px_rgba(15,23,42,0.08)]" style={pageStyle}>
+              <ReactQuill
               ref={quillRef}
               theme="snow"
               value={content}
@@ -320,7 +337,8 @@ export default function ManuscriptEditor() {
               formats={quillFormats}
               placeholder="Comece a escrever sua história..."
               className={cn("min-h-[70vh]", `font-${quillFontClass}`)}
-            />
+              />
+            </div>
           </div>
 
           <div className="mt-3 flex justify-end text-[11px] tabular-nums text-muted-foreground">{stats.words} palavras</div>

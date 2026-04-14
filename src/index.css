@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,300;1,8..60,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600;7..72,700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,300;1,8..60,400&display=swap");
 @import url("react-quill/dist/quill.snow.css");
 
 @tailwind base;
@@ -111,4 +111,218 @@
 
 .mobile-bottom-safe {
   padding-bottom: calc(0.75rem + var(--safe-bottom));
+}
+
+.word-workspace {
+  background-image: linear-gradient(180deg, hsl(var(--muted) / 0.72), hsl(var(--background)));
+}
+
+.word-document .ql-toolbar.ql-snow {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.9);
+  padding: 0.85rem 1rem;
+  backdrop-filter: blur(14px);
+}
+
+.word-document .ql-container.ql-snow {
+  border: 0;
+  background: hsl(var(--card));
+}
+
+.word-document .ql-editor {
+  min-height: calc(100vh - 20rem);
+  max-width: 8.27in;
+  margin: 0 auto;
+  padding: 1.1in 0.95in 1.35in;
+  color: hsl(var(--foreground));
+  line-height: 1.9;
+  letter-spacing: 0.002em;
+}
+
+.word-document .ql-editor.ql-blank::before {
+  left: 0.95in;
+  right: 0.95in;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.word-document .ql-snow .ql-picker {
+  color: hsl(var(--foreground));
+}
+
+.word-document .ql-snow .ql-picker-options {
+  border-color: hsl(var(--border));
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+}
+
+.word-document .ql-snow .ql-stroke {
+  stroke: hsl(var(--foreground) / 0.7);
+}
+
+.word-document .ql-snow .ql-fill {
+  fill: hsl(var(--foreground) / 0.7);
+}
+
+.word-document .ql-snow button:hover .ql-stroke,
+.word-document .ql-snow .ql-picker-label:hover .ql-stroke,
+.word-document .ql-snow .ql-active .ql-stroke {
+  stroke: hsl(var(--primary));
+}
+
+.word-document .ql-snow button:hover .ql-fill,
+.word-document .ql-snow .ql-picker-label:hover .ql-fill,
+.word-document .ql-snow .ql-active .ql-fill {
+  fill: hsl(var(--primary));
+}
+
+.word-document .ql-snow .ql-picker.ql-font {
+  min-width: 11rem;
+}
+
+.word-document .ql-snow .ql-picker.ql-size,
+.word-document .ql-snow .ql-picker.ql-header {
+  min-width: 6.25rem;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item::before {
+  content: "Fonte";
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="source-sans"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="source-sans"]::before {
+  content: "Source Sans 3";
+  font-family: "Source Sans 3", sans-serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="inter"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="inter"]::before {
+  content: "Inter";
+  font-family: "Inter", sans-serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="crimson"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="crimson"]::before {
+  content: "Crimson Pro";
+  font-family: "Crimson Pro", serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="source-serif"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="source-serif"]::before {
+  content: "Source Serif 4";
+  font-family: "Source Serif 4", serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="literata"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="literata"]::before {
+  content: "Literata";
+  font-family: "Literata", serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="newsreader"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="newsreader"]::before {
+  content: "Newsreader";
+  font-family: "Newsreader", serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="merriweather"]::before,
+.word-document .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="merriweather"]::before {
+  content: "Merriweather";
+  font-family: "Merriweather", serif;
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item::before {
+  content: "18 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="12px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="12px"]::before {
+  content: "12 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14px"]::before {
+  content: "14 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16px"]::before {
+  content: "16 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before {
+  content: "18 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="20px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="20px"]::before {
+  content: "20 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="24px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="24px"]::before {
+  content: "24 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="28px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="28px"]::before {
+  content: "28 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="32px"]::before,
+.word-document .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="32px"]::before {
+  content: "32 px";
+}
+
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-label::before,
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-item::before {
+  content: "Paragrafo";
+}
+
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="1"]::before,
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
+  content: "Titulo 1";
+}
+
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="2"]::before,
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
+  content: "Titulo 2";
+}
+
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="3"]::before,
+.word-document .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
+  content: "Titulo 3";
+}
+
+@media (max-width: 768px) {
+  .word-document .ql-toolbar.ql-snow {
+    padding: 0.75rem;
+  }
+
+  .word-document .ql-editor {
+    min-height: calc(100vh - 16rem);
+    padding: 1.35rem 1rem 5rem;
+  }
+
+  .word-document .ql-editor.ql-blank::before {
+    left: 1rem;
+    right: 1rem;
+  }
+
+  .word-document .ql-snow .ql-picker.ql-font,
+  .word-document .ql-snow .ql-picker.ql-size,
+  .word-document .ql-snow .ql-picker.ql-header {
+    min-width: 0;
+  }
 }

@@ -15,11 +15,14 @@ import { COLOR_PRESETS, getResolvedThemeMode, getTheme, saveTheme } from "@/lib/
 import { cn } from "@/lib/utils";
 
 const fontOptions = [
+  { value: "'Source Sans 3', sans-serif", label: "Source Sans 3 (Documento)" },
+  { value: "'Inter', sans-serif", label: "Inter (Sem serifa)" },
   { value: "'Crimson Pro', serif", label: "Crimson Pro (Serifada)" },
+  { value: "'Literata', serif", label: "Literata (Leitura longa)" },
+  { value: "'Newsreader', serif", label: "Newsreader (Editorial)" },
+  { value: "'Source Serif 4', serif", label: "Source Serif 4" },
   { value: "'Merriweather', serif", label: "Merriweather" },
-  { value: "'Lora', serif", label: "Lora" },
-  { value: "'Source Serif 4', serif", label: "Source Serif" },
-  { value: "'Inter', sans-serif", label: "Inter (Sem serifa)" }
+  { value: "'Lora', serif", label: "Lora" }
 ];
 
 const themeModeOptions = [
