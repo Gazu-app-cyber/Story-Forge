@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
 import { manuscriptTypes } from "@/lib/manuscriptTypes";
@@ -51,8 +52,12 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
       } else {
         await base44.entities.Manuscript.create(data);
       }
+      toast.success(editManuscript ? "Manuscrito atualizado!" : "Manuscrito criado!");
       onOpenChange(false);
       onSuccess?.();
+    } catch (error) {
+      console.error("Failed to save manuscript", error);
+      toast.error(error?.message || "Não foi possível salvar o manuscrito.");
     } finally {
       setLoading(false);
     }

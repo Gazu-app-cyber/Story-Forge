@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,8 +24,12 @@ export default function CreateFolderDialog({ open, onOpenChange, editFolder, onS
       } else {
         await base44.entities.Folder.create({ name: name.trim() });
       }
+      toast.success(editFolder ? "Pasta renomeada!" : "Pasta criada!");
       onOpenChange(false);
       onSuccess?.();
+    } catch (error) {
+      console.error("Failed to save folder", error);
+      toast.error(error?.message || "Não foi possível salvar a pasta.");
     } finally {
       setLoading(false);
     }

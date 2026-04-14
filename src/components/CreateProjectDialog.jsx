@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,12 @@ export default function CreateProjectDialog({ open, onOpenChange, folders, editP
       } else {
         await base44.entities.Project.create(data);
       }
+      toast.success(editProject ? "Projeto atualizado!" : "Projeto criado!");
       onOpenChange(false);
       onSuccess?.();
+    } catch (error) {
+      console.error("Failed to save project", error);
+      toast.error(error?.message || "Não foi possível salvar o projeto.");
     } finally {
       setLoading(false);
     }
