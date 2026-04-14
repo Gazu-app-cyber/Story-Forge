@@ -15,6 +15,7 @@ import ProjectView from "@/pages/ProjectView";
 import Projects from "@/pages/Projects";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
+import AuthPage from "@/pages/AuthPage";
 
 function LoadingScreen() {
   return (
@@ -25,16 +26,13 @@ function LoadingScreen() {
 }
 
 function AuthenticatedApp() {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
   if (isLoadingAuth || isLoadingPublicSettings) return <LoadingScreen />;
 
   if (authError) {
     if (authError.type === "user_not_registered") return <UserNotRegisteredError />;
-    if (authError.type === "auth_required") {
-      navigateToLogin();
-      return null;
-    }
+    if (authError.type === "auth_required") return <AuthPage />;
   }
 
   return (

@@ -133,7 +133,9 @@ export default function Settings() {
   }
 
   async function handleDeleteAccount() {
-    await base44.auth.logout(window.location.href);
+    await base44.auth.deleteMe();
+    toast.success("Conta removida.");
+    window.location.href = "/";
   }
 
   if (loading) {
@@ -339,7 +341,7 @@ export default function Settings() {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Salvar configurações
         </Button>
-        <Button variant="outline" onClick={() => base44.auth.logout()} className="gap-2">
+        <Button variant="outline" onClick={() => base44.auth.logout().then(() => (window.location.href = "/"))} className="gap-2">
           <LogOut className="h-4 w-4" />
           Sair da conta
         </Button>
