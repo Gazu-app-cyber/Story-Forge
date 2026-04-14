@@ -84,17 +84,24 @@ export default function ManuscriptEditor() {
 
   useEffect(() => {
     async function loadData() {
-      const [manuscriptList, currentUser] = await Promise.all([base44.entities.Manuscript.filter({ id }), base44.auth.me()]);
-      const currentManuscript = manuscriptList[0];
-      if (currentManuscript) {
-        setManuscript(currentManuscript);
-        setContent(currentManuscript.content || "");
-        setName(currentManuscript.name);
-        setUser(currentUser);
-        const projectList = await base44.entities.Project.filter({ id: currentManuscript.project_id });
-        setProject(projectList[0]);
+      try {
+        const [manuscriptList, currentUser] = await Promise.all([base44.entities.Manuscript.filter({ id }), base44.auth.me()]);
+        const currentManuscript = manuscriptList[0];
+        if (currentManuscript) {
+          setManuscript(currentManuscript);
+          setContent(currentManuscript.content || "");
+          setName(currentManuscript.name);
+          setUser(currentUser);
+          const projectList = await base44.entities.Project.filter({ id: currentManuscript.project_id });
+          setProject(projectList[0]);
+        }
+      } catch (error) {
+        console.error("Failed to load manuscript editor", error);
+        setManuscript(null);
+        setProject(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     loadData();

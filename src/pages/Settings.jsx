@@ -56,20 +56,25 @@ export default function Settings() {
 
   useEffect(() => {
     async function load() {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      setDisplayName(currentUser.display_name || currentUser.full_name || "");
-      setUsername(currentUser.username || "");
-      setBio(currentUser.bio || "");
-      setProfileImage(currentUser.profile_image || "");
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+        setDisplayName(currentUser.display_name || currentUser.full_name || "");
+        setUsername(currentUser.username || "");
+        setBio(currentUser.bio || "");
+        setProfileImage(currentUser.profile_image || "");
 
-      const stored = getTheme();
-      setThemeMode(stored.theme_mode || (stored.dark_mode ? "dark" : "system"));
-      setColorPreset(stored.color_preset ?? currentUser.color_preset ?? "indigo");
-      setFontFamily(stored.font_family ?? currentUser.font_family ?? "'Crimson Pro', serif");
-      setFontSize(stored.font_size ?? currentUser.font_size ?? 18);
-      setReducedMotion(Boolean(stored.reduced_motion));
-      setLoading(false);
+        const stored = getTheme();
+        setThemeMode(stored.theme_mode || (stored.dark_mode ? "dark" : "system"));
+        setColorPreset(stored.color_preset ?? currentUser.color_preset ?? "indigo");
+        setFontFamily(stored.font_family ?? currentUser.font_family ?? "'Crimson Pro', serif");
+        setFontSize(stored.font_size ?? currentUser.font_size ?? 18);
+        setReducedMotion(Boolean(stored.reduced_motion));
+      } catch (error) {
+        console.error("Failed to load settings", error);
+      } finally {
+        setLoading(false);
+      }
     }
 
     load();

@@ -31,16 +31,24 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
 
   async function loadData() {
-    setLoading(true);
-    const [projectData, folderData, currentUser] = await Promise.all([
-      base44.entities.Project.list("-updated_date", 50),
-      base44.entities.Folder.list("-created_date", 50),
-      base44.auth.me()
-    ]);
-    setProjects(projectData);
-    setFolders(folderData);
-    setUser(currentUser);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [projectData, folderData, currentUser] = await Promise.all([
+        base44.entities.Project.list("-updated_date", 50),
+        base44.entities.Folder.list("-created_date", 50),
+        base44.auth.me()
+      ]);
+      setProjects(projectData);
+      setFolders(folderData);
+      setUser(currentUser);
+    } catch (error) {
+      console.error("Failed to load dashboard data", error);
+      setProjects([]);
+      setFolders([]);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

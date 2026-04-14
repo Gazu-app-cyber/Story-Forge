@@ -13,16 +13,24 @@ export default function Favorites() {
   const [loading, setLoading] = useState(true);
 
   async function loadData() {
-    setLoading(true);
-    const [projectData, manuscriptData, folderData] = await Promise.all([
-      base44.entities.Project.filter({ is_favorite: true }, "-updated_date", 100),
-      base44.entities.Manuscript.filter({ is_favorite: true }, "-updated_date", 100),
-      base44.entities.Folder.list("-created_date", 50)
-    ]);
-    setProjects(projectData);
-    setManuscripts(manuscriptData);
-    setFolders(folderData);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [projectData, manuscriptData, folderData] = await Promise.all([
+        base44.entities.Project.filter({ is_favorite: true }, "-updated_date", 100),
+        base44.entities.Manuscript.filter({ is_favorite: true }, "-updated_date", 100),
+        base44.entities.Folder.list("-created_date", 50)
+      ]);
+      setProjects(projectData);
+      setManuscripts(manuscriptData);
+      setFolders(folderData);
+    } catch (error) {
+      console.error("Failed to load favorites", error);
+      setProjects([]);
+      setManuscripts([]);
+      setFolders([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

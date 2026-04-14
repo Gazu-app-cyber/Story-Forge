@@ -15,14 +15,21 @@ export default function Folders() {
   const [deleteFolder, setDeleteFolder] = useState(null);
 
   async function loadData() {
-    setLoading(true);
-    const [folderData, projectData] = await Promise.all([
-      base44.entities.Folder.list("-created_date", 100),
-      base44.entities.Project.list("-updated_date", 200)
-    ]);
-    setFolders(folderData);
-    setProjects(projectData);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [folderData, projectData] = await Promise.all([
+        base44.entities.Folder.list("-created_date", 100),
+        base44.entities.Project.list("-updated_date", 200)
+      ]);
+      setFolders(folderData);
+      setProjects(projectData);
+    } catch (error) {
+      console.error("Failed to load folders", error);
+      setFolders([]);
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

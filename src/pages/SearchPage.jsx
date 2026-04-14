@@ -31,21 +31,29 @@ export default function SearchPage() {
     }
 
     const timer = setTimeout(async () => {
-      setLoading(true);
-      const [allProjects, allManuscripts] = await Promise.all([
-        base44.entities.Project.list("-updated_date", 500),
-        base44.entities.Manuscript.list("-updated_date", 500)
-      ]);
-      const lower = query.toLowerCase();
-      const filteredProjects = allProjects.filter((project) => project.name.toLowerCase().includes(lower));
-      let filteredManuscripts = allManuscripts.filter((manuscript) => manuscript.name.toLowerCase().includes(lower));
-      if (filterType !== "all") {
-        filteredManuscripts = filteredManuscripts.filter((manuscript) => manuscript.type === filterType);
+      try {
+        setLoading(true);
+        const [allProjects, allManuscripts] = await Promise.all([
+          base44.entities.Project.list("-updated_date", 500),
+          base44.entities.Manuscript.list("-updated_date", 500)
+        ]);
+        const lower = query.toLowerCase();
+        const filteredProjects = allProjects.filter((project) => project.name.toLowerCase().includes(lower));
+        let filteredManuscripts = allManuscripts.filter((manuscript) => manuscript.name.toLowerCase().includes(lower));
+        if (filterType !== "all") {
+          filteredManuscripts = filteredManuscripts.filter((manuscript) => manuscript.type === filterType);
+        }
+        setProjects(filteredProjects);
+        setManuscripts(filteredManuscripts);
+        setSearched(true);
+      } catch (error) {
+        console.error("Failed to run search", error);
+        setProjects([]);
+        setManuscripts([]);
+        setSearched(true);
+      } finally {
+        setLoading(false);
       }
-      setProjects(filteredProjects);
-      setManuscripts(filteredManuscripts);
-      setSearched(true);
-      setLoading(false);
     }, 400);
 
     return () => clearTimeout(timer);

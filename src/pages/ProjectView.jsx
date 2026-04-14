@@ -39,16 +39,24 @@ export default function ProjectView() {
   const [showEditProject, setShowEditProject] = useState(false);
 
   async function loadData() {
-    setLoading(true);
-    const [projectData, manuscriptData, folderData] = await Promise.all([
-      base44.entities.Project.filter({ id }, "-updated_date", 1),
-      base44.entities.Manuscript.filter({ project_id: id }, "-updated_date", 500),
-      base44.entities.Folder.list("-created_date", 50)
-    ]);
-    setProject(projectData[0]);
-    setManuscripts(manuscriptData);
-    setFolders(folderData);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [projectData, manuscriptData, folderData] = await Promise.all([
+        base44.entities.Project.filter({ id }, "-updated_date", 1),
+        base44.entities.Manuscript.filter({ project_id: id }, "-updated_date", 500),
+        base44.entities.Folder.list("-created_date", 50)
+      ]);
+      setProject(projectData[0]);
+      setManuscripts(manuscriptData);
+      setFolders(folderData);
+    } catch (error) {
+      console.error("Failed to load project view", error);
+      setProject(null);
+      setManuscripts([]);
+      setFolders([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

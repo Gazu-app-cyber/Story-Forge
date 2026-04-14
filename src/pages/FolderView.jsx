@@ -16,15 +16,23 @@ export default function FolderView() {
   const [showCreate, setShowCreate] = useState(false);
 
   async function loadData() {
-    setLoading(true);
-    const [allFolders, allProjects] = await Promise.all([
-      base44.entities.Folder.list("-created_date", 100),
-      base44.entities.Project.filter({ folder_id: id }, "-updated_date", 200)
-    ]);
-    setFolder(allFolders.find((item) => item.id === id));
-    setFolders(allFolders);
-    setProjects(allProjects);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [allFolders, allProjects] = await Promise.all([
+        base44.entities.Folder.list("-created_date", 100),
+        base44.entities.Project.filter({ folder_id: id }, "-updated_date", 200)
+      ]);
+      setFolder(allFolders.find((item) => item.id === id));
+      setFolders(allFolders);
+      setProjects(allProjects);
+    } catch (error) {
+      console.error("Failed to load folder view", error);
+      setFolder(null);
+      setFolders([]);
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

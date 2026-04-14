@@ -25,14 +25,21 @@ export default function Projects() {
   const [deleteProject, setDeleteProject] = useState(null);
 
   async function loadData() {
-    setLoading(true);
-    const [projectData, folderData] = await Promise.all([
-      base44.entities.Project.list("-updated_date", 200),
-      base44.entities.Folder.list("-created_date", 50)
-    ]);
-    setProjects(projectData);
-    setFolders(folderData);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const [projectData, folderData] = await Promise.all([
+        base44.entities.Project.list("-updated_date", 200),
+        base44.entities.Folder.list("-created_date", 50)
+      ]);
+      setProjects(projectData);
+      setFolders(folderData);
+    } catch (error) {
+      console.error("Failed to load projects", error);
+      setProjects([]);
+      setFolders([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
