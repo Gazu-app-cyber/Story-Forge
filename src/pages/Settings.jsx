@@ -53,6 +53,7 @@ export default function Settings() {
   const [profileImage, setProfileImage] = useState("");
   const [themeMode, setThemeMode] = useState("system");
   const [colorPreset, setColorPreset] = useState("indigo");
+  const [customPrimary, setCustomPrimary] = useState("");
   const [fontFamily, setFontFamily] = useState("'Crimson Pro', serif");
   const [fontSize, setFontSize] = useState(18);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -70,6 +71,7 @@ export default function Settings() {
         const stored = getTheme();
         setThemeMode(stored.theme_mode || (stored.dark_mode ? "dark" : "system"));
         setColorPreset(stored.color_preset ?? currentUser.color_preset ?? "indigo");
+        setCustomPrimary(stored.custom_primary ?? currentUser.custom_primary ?? "");
         setFontFamily(stored.font_family ?? currentUser.font_family ?? "'Crimson Pro', serif");
         setFontSize(stored.font_size ?? currentUser.font_size ?? 18);
         setReducedMotion(Boolean(stored.reduced_motion));
@@ -88,6 +90,7 @@ export default function Settings() {
       theme_mode: next.theme_mode ?? themeMode,
       dark_mode: (next.theme_mode ?? themeMode) === "dark",
       color_preset: next.color_preset ?? colorPreset,
+      custom_primary: next.custom_primary ?? customPrimary,
       font_family: next.font_family ?? fontFamily,
       font_size: next.font_size ?? fontSize,
       reduced_motion: next.reduced_motion ?? reducedMotion
@@ -101,6 +104,7 @@ export default function Settings() {
         theme_mode: themeMode,
         dark_mode: getResolvedThemeMode({ theme_mode: themeMode }) === "dark",
         color_preset: colorPreset,
+        custom_primary: customPrimary,
         font_family: fontFamily,
         font_size: fontSize,
         reduced_motion: reducedMotion
@@ -262,7 +266,8 @@ export default function Settings() {
               key={key}
               onClick={() => {
                 setColorPreset(key);
-                previewTheme({ color_preset: key });
+                setCustomPrimary("");
+                previewTheme({ color_preset: key, custom_primary: "" });
               }}
               className={cn("flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all", colorPreset === key ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/30")}
             >
@@ -270,6 +275,47 @@ export default function Settings() {
               <span className="text-[11px] font-medium text-muted-foreground">{preset.label}</span>
             </button>
           ))}
+        </div>
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Cor personalizada</p>
+              <p className="text-sm text-muted-foreground">Use a roda de cores para um ajuste fino sem perder as opÃ§Ãµes rÃ¡pidas acima.</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
+              <input
+                type="color"
+                value={customPrimary || "#5b4bb6"}
+                onChange={(event) => {
+                  const nextColor = event.target.value;
+                  setCustomPrimary(nextColor);
+                  previewTheme({ custom_primary: nextColor });
+                }}
+                className="h-11 w-14 cursor-pointer rounded-md border-0 bg-transparent p-0"
+                aria-label="Selecionar cor personalizada"
+              />
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Cor ativa</p>
+                <p className="font-medium text-foreground">{customPrimary ? customPrimary.toUpperCase() : "Paleta predefinida"}</p>
+              </div>
+            </div>
+          </div>
+          {customPrimary ? (
+            <div className="mt-3 flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-muted-foreground">A cor personalizada estÃ¡ sendo usada como cor principal do app.</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCustomPrimary("");
+                  previewTheme({ custom_primary: "" });
+                }}
+              >
+                Voltar para paleta
+              </Button>
+            </div>
+          ) : null}
         </div>
       </section>
 

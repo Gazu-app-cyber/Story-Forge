@@ -13,14 +13,16 @@ import { cn } from "@/lib/utils";
 
 moment.locale("pt-br");
 
-export default function ProjectCard({ project, onToggleFavorite, onDelete, onEdit, onMove, folders = [] }) {
+export default function ProjectCard({ project, viewMode = "grid", onToggleFavorite, onDelete, onEdit, onMove, folders = [] }) {
   const initial = (project.name || "P")[0].toUpperCase();
   const hasActions = onToggleFavorite || onEdit || onMove || onDelete;
+  const currentFolder = folders.find((folder) => folder.id === project.folder_id);
+  const isList = viewMode === "list";
 
   return (
     <Link to={`/project/${project.id}`} className="group block">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-        <div className="relative overflow-hidden bg-muted" style={{ aspectRatio: "16/9" }}>
+      <div className={cn("overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_4px_24px_rgba(0,0,0,0.3)]", isList && "flex flex-col items-stretch sm:flex-row")}>
+        <div className={cn("relative overflow-hidden bg-muted", isList && "sm:w-[220px] sm:shrink-0")} style={{ aspectRatio: isList ? "16/10" : "16/9", width: isList ? undefined : "100%" }}>
           {project.cover_image ? (
             <img
               src={project.cover_image}
@@ -114,10 +116,18 @@ export default function ProjectCard({ project, onToggleFavorite, onDelete, onEdi
           ) : null}
         </div>
 
-        <div className="p-4">
-          <h3 className="truncate text-[15px] font-semibold text-card-foreground transition-colors group-hover:text-primary">{project.name}</h3>
-          {project.description ? <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{project.description}</p> : null}
-          <p className="mt-3 text-[11px] text-muted-foreground">{moment(project.updated_date).fromNow()}</p>
+        <div className={cn("p-4", isList && "flex flex-1 flex-col justify-between")}>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-[15px] font-semibold text-card-foreground transition-colors group-hover:text-primary">{project.name}</h3>
+              {currentFolder ? <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{currentFolder.name}</span> : null}
+            </div>
+            {project.description ? <p className={cn("mt-1.5 text-[13px] leading-relaxed text-muted-foreground", isList ? "line-clamp-2" : "line-clamp-2")}>{project.description}</p> : null}
+          </div>
+          <div className={cn("text-[11px] text-muted-foreground", isList ? "mt-4 flex flex-wrap items-center gap-3" : "mt-3")}>
+            <span>Editado {moment(project.updated_date).fromNow()}</span>
+            {isList ? <span>Criado {moment(project.created_date).fromNow()}</span> : null}
+          </div>
         </div>
       </div>
     </Link>
