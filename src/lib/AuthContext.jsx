@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
+import { getBrazilDateKey, shouldSendReminder } from "@/lib/streak";
 
 const AuthContext = createContext();
 
@@ -19,6 +21,17 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     checkAppState();
   }, []);
+
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const interval = window.setInterval(() => {
+      checkDailyReminder();
+    }, 60 * 1000);
+
+    checkDailyReminder();
+    return () => window.clearInterval(interval);
+  }, [user?.id, user?.wordsWrittenToday, user?.reminderSentDate, user?.wordsTrackingDate]);
 
   async function checkAppState() {
     try {
@@ -57,6 +70,30 @@ export function AuthProvider({ children }) {
     setUser(null);
     setIsAuthenticated(false);
     setAuthError({ type: "auth_required", message: "Autenticacao necessaria." });
+  }
+
+  async function checkDailyReminder() {
+    try {
+      const currentUser = await base44.auth.syncStreak();
+      setUser(currentUser);
+
+      if (!shouldSendReminder(currentUser)) return;
+
+      const message = "Você ainda não atingiu sua meta de hoje. Escreva 100 palavras para manter sua sequência!";
+      toast.warning(message, {
+        id: `streak-reminder-${getBrazilDateKey()}`,
+        duration: 10000
+      });
+
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        new Notification("Meta diária do StoryForge", { body: message });
+      }
+
+      const updatedUser = await base44.auth.markReminderSent();
+      setUser(updatedUser);
+    } catch (error) {
+      console.error("Failed to check streak reminder", error);
+    }
   }
 
   return (

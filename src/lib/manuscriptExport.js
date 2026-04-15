@@ -1,4 +1,7 @@
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import jsPDF from "jspdf";
+import { isNativeApp } from "@/lib/mobile";
 
 function stripHtml(html = "") {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -15,7 +18,42 @@ function downloadBlob(blob, fileName) {
   URL.revokeObjectURL(url);
 }
 
-export function exportManuscriptAsPdf({ title, html }) {
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onloadend = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function deliverExport(blob, fileName, title) {
+  if (!isNativeApp()) {
+    downloadBlob(blob, fileName);
+    return;
+  }
+
+  const data = await blobToBase64(blob);
+  const saved = await Filesystem.writeFile({
+    path: `exports/${fileName}`,
+    data,
+    directory: Directory.Documents,
+    recursive: true
+  });
+
+  await Share.share({
+    title: title || fileName,
+    text: `Exportacao de ${title || fileName}`,
+    url: saved.uri,
+    dialogTitle: `Compartilhar ${fileName}`
+  });
+}
+
+export async function exportManuscriptAsPdf({ title, html }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const text = stripHtml(html);
   const margin = 56;
@@ -40,10 +78,17 @@ export function exportManuscriptAsPdf({ title, html }) {
     cursorY += 18;
   });
 
-  doc.save(`${title || "manuscrito"}.pdf`);
+  const fileName = `${title || "manuscrito"}.pdf`;
+  if (!isNativeApp()) {
+    doc.save(fileName);
+    return;
+  }
+
+  const blob = doc.output("blob");
+  await deliverExport(blob, fileName, title || "Manuscrito");
 }
 
-export function exportManuscriptAsDocx({ title, html }) {
+export async function exportManuscriptAsDocx({ title, html }) {
   const safeTitle = title || "Manuscrito";
   const body = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -64,10 +109,10 @@ export function exportManuscriptAsDocx({ title, html }) {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   });
 
-  downloadBlob(blob, `${safeTitle}.docx`);
+  await deliverExport(blob, `${safeTitle}.docx`, safeTitle);
 }
 
-export function exportManuscriptAsHtml({ title, html }) {
+export async function exportManuscriptAsHtml({ title, html }) {
   const safeTitle = title || "Manuscrito";
   const blob = new Blob(
     [
@@ -75,5 +120,5 @@ export function exportManuscriptAsHtml({ title, html }) {
     ],
     { type: "text/html;charset=utf-8" }
   );
-  downloadBlob(blob, `${safeTitle}.html`);
+  await deliverExport(blob, `${safeTitle}.html`, safeTitle);
 }

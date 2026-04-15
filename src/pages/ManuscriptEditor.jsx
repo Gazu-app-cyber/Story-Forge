@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { columnOptions, DEFAULT_DOCUMENT_LAYOUT, getDocumentLayoutStyle, marginOptions, normalizeDocumentLayout, orientationOptions, pageSizeOptions } from "@/lib/documentLayout";
 import { exportManuscriptAsDocx, exportManuscriptAsHtml, exportManuscriptAsPdf } from "@/lib/manuscriptExport";
 import { getTypeColor, getTypeIcon } from "@/lib/manuscriptTypes";
-import { checkFeatureAccess, checkWordLimit, getWritingStats } from "@/lib/planLimits";
+import { checkFeatureAccess, checkWordLimit, countWordsFromHtml, getWritingStats } from "@/lib/planLimits";
 import { cn } from "@/lib/utils";
 import "@/lib/theme";
 
@@ -92,6 +92,9 @@ export default function ManuscriptEditor() {
   const latestContentRef = useRef("");
   const latestLayoutRef = useRef(DEFAULT_DOCUMENT_LAYOUT);
   const wordLimitWarningRef = useRef(false);
+  const previousWordCountRef = useRef(0);
+  const streakDeltaRef = useRef(0);
+  const streakTimeoutRef = useRef(null);
 
   const [manuscript, setManuscript] = useState(null);
   const [project, setProject] = useState(null);
@@ -120,6 +123,7 @@ export default function ManuscriptEditor() {
           setUser(currentUser);
           latestContentRef.current = nextContent;
           latestLayoutRef.current = nextLayout;
+          previousWordCountRef.current = countWordsFromHtml(nextContent);
           const projectList = await base44.entities.Project.filter({ id: currentManuscript.project_id });
           setProject(projectList[0]);
         }
@@ -135,6 +139,7 @@ export default function ManuscriptEditor() {
     loadData();
     return () => {
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      if (streakTimeoutRef.current) clearTimeout(streakTimeoutRef.current);
     };
   }, [id]);
 
@@ -257,8 +262,26 @@ export default function ManuscriptEditor() {
       return;
     }
     wordLimitWarningRef.current = false;
+    const nextWordCount = countWordsFromHtml(value);
+    const delta = Math.max(nextWordCount - previousWordCountRef.current, 0);
+    previousWordCountRef.current = nextWordCount;
     setContent(value);
     queueSave(value, latestLayoutRef.current);
+
+    if (delta > 0) {
+      streakDeltaRef.current += delta;
+      if (streakTimeoutRef.current) clearTimeout(streakTimeoutRef.current);
+      streakTimeoutRef.current = setTimeout(async () => {
+        try {
+          const updatedUser = await base44.auth.recordWords(streakDeltaRef.current);
+          setUser(updatedUser);
+        } catch (error) {
+          console.error("Failed to record writing progress", error);
+        } finally {
+          streakDeltaRef.current = 0;
+        }
+      }, 700);
+    }
   }
 
   function updateLayout(patch) {
@@ -310,20 +333,24 @@ export default function ManuscriptEditor() {
     return plainText.match(/.{1,1400}(\s|$)/g) || [plainText];
   }, [content]);
 
-  function handleExport(format) {
+  async function handleExport(format) {
     if (!canExport) {
       toast.error("Recurso disponivel apenas para Premium e Pro.");
       return;
     }
-    if (format === "pdf") {
-      exportManuscriptAsPdf({ title: manuscript.name, html: content });
-      return;
+    try {
+      if (format === "pdf") {
+        await exportManuscriptAsPdf({ title: manuscript.name, html: content });
+        return;
+      }
+      if (format === "html") {
+        await exportManuscriptAsHtml({ title: manuscript.name, html: content });
+        return;
+      }
+      await exportManuscriptAsDocx({ title: manuscript.name, html: content });
+    } catch (error) {
+      toast.error(error?.message || "Nao foi possivel exportar este manuscrito.");
     }
-    if (format === "html") {
-      exportManuscriptAsHtml({ title: manuscript.name, html: content });
-      return;
-    }
-    exportManuscriptAsDocx({ title: manuscript.name, html: content });
   }
 
   if (loading) {

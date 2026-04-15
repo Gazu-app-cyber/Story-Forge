@@ -2,24 +2,27 @@ export const PLAN_DEFINITIONS = {
   free: {
     label: "Free",
     projectLimit: 5,
-    wordLimitPerManuscript: 20000
+    wordLimitPerManuscript: 20000,
+    collaboratorLimit: 0
   },
   premium: {
     label: "Premium",
     projectLimit: Infinity,
-    wordLimitPerManuscript: Infinity
+    wordLimitPerManuscript: Infinity,
+    collaboratorLimit: 5
   },
   pro: {
     label: "Pro",
     projectLimit: Infinity,
-    wordLimitPerManuscript: Infinity
+    wordLimitPerManuscript: Infinity,
+    collaboratorLimit: Infinity
   }
 };
 
 export const PLAN_FEATURES = {
   export: ["premium", "pro"],
   stats: ["premium", "pro"],
-  collaboration: ["pro"],
+  collaboration: ["premium", "pro"],
   bookMode: ["pro"],
   templates: ["pro"]
 };
@@ -78,5 +81,20 @@ export function checkWordLimit(contentOrWordCount, user) {
     words,
     remaining: limit === Infinity ? Infinity : Math.max(limit - words, 0),
     message: allowed ? "" : "Voce atingiu o limite do plano gratuito. Faca upgrade para continuar."
+  };
+}
+
+export function checkCollaborationLimit(user, collaboratorCount) {
+  const plan = getPlanDefinition(user);
+  const limit = plan.collaboratorLimit;
+  const hasAccess = limit > 0;
+  const allowed = hasAccess && (limit === Infinity || collaboratorCount < limit);
+
+  return {
+    hasAccess,
+    allowed,
+    limit,
+    remaining: limit === Infinity ? Infinity : Math.max(limit - collaboratorCount, 0),
+    message: hasAccess ? "Voce atingiu o limite de colaboradores do seu plano." : "Colaboracao nao esta disponivel no plano gratuito."
   };
 }

@@ -11,7 +11,7 @@ import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ManuscriptCard from "@/components/ManuscriptCard";
 import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
 import { getTypeColor, getTypeIcon, manuscriptTypes } from "@/lib/manuscriptTypes";
-import { checkFeatureAccess } from "@/lib/planLimits";
+import { checkCollaborationLimit, getPlanDefinition } from "@/lib/planLimits";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,7 @@ export default function ProjectView() {
   }, [manuscripts, search, sortBy, filterType]);
 
   const typeGroups = useMemo(() => manuscriptTypes.filter((type) => manuscripts.some((item) => item.type === type)), [manuscripts]);
+  const collaborationStatus = useMemo(() => checkCollaborationLimit(user, (project?.collaborators || []).length), [user, project]);
 
   async function handleToggleFavorite(manuscript) {
     await base44.entities.Manuscript.update(manuscript.id, { is_favorite: !manuscript.is_favorite });
@@ -122,12 +123,12 @@ export default function ProjectView() {
 
   async function handleInviteCollaborator() {
     if (!inviteEmail.trim()) return;
-    if (!checkFeatureAccess("collaboration", user)) {
-      toast.error("Recurso disponivel apenas para o plano Pro.");
+    if (!collaborationStatus.hasAccess) {
+      toast.error(collaborationStatus.message);
       return;
     }
-    if ((project.collaborators || []).length >= 10) {
-      toast.error("O plano Pro permite no maximo 10 colaboradores por projeto.");
+    if (!collaborationStatus.allowed) {
+      toast.error("VocÃª atingiu o limite de colaboradores do seu plano");
       return;
     }
 
@@ -230,10 +231,16 @@ export default function ProjectView() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Colaboracao</p>
-                  <p className="text-sm text-muted-foreground">Convide ate 10 usuarios existentes para este projeto.</p>
+                  <p className="text-sm text-muted-foreground">
+                    {collaborationStatus.limit === Infinity
+                      ? "Convide colaboradores ilimitados para este projeto."
+                      : collaborationStatus.hasAccess
+                        ? `Convide atÃ© ${collaborationStatus.limit} colaboradores para este projeto.`
+                        : "FaÃ§a upgrade para liberar colaboraÃ§Ã£o neste projeto."}
+                  </p>
                 </div>
-                <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", checkFeatureAccess("collaboration", user) ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800")}>
-                  {checkFeatureAccess("collaboration", user) ? "Pro liberado" : "Somente Pro"}
+                <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", collaborationStatus.hasAccess ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800")}>
+                  {collaborationStatus.hasAccess ? `${getPlanDefinition(user).label} liberado` : "Somente Premium ou Pro"}
                 </span>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -242,20 +249,21 @@ export default function ProjectView() {
                   type="button"
                   className="gap-2 sm:w-auto"
                   onClick={
-                    checkFeatureAccess("collaboration", user)
+                    collaborationStatus.hasAccess
                       ? handleInviteCollaborator
                       : () =>
-                          base44.auth.updateMe({ plan: "pro" }).then((updatedUser) => {
+                          base44.auth.updateMe({ plan: "premium" }).then((updatedUser) => {
                             setUser(updatedUser);
-                            toast.success("Plano alterado para Pro.");
+                            toast.success("Plano alterado para Premium.");
                           })
                   }
-                  disabled={inviteLoading}
+                  disabled={inviteLoading || (collaborationStatus.hasAccess && !collaborationStatus.allowed)}
                 >
                   <Crown className="h-4 w-4" />
-                  {checkFeatureAccess("collaboration", user) ? "Convidar" : "Fazer upgrade"}
+                  {collaborationStatus.hasAccess ? "Convidar" : "Fazer upgrade"}
                 </Button>
               </div>
+              {collaborationStatus.hasAccess && !collaborationStatus.allowed ? <p className="mt-2 text-xs font-medium text-amber-700">VocÃª atingiu o limite de colaboradores do seu plano.</p> : null}
               {(project.collaborators || []).length ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(project.collaborators || []).map((collaboratorId) => (

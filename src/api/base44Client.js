@@ -1,3 +1,5 @@
+import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
+
 const STORAGE_KEYS = {
   users: "storyforge_users",
   session: "storyforge_session",
@@ -62,6 +64,11 @@ function ensureSeedData() {
     theme_mode: "system",
     dark_mode: false,
     reduced_motion: false,
+    streakCount: 0,
+    lastStreakDate: "",
+    wordsWrittenToday: 0,
+    wordsTrackingDate: getBrazilDateKey(),
+    reminderSentDate: "",
     created_date: createdDate,
     updated_date: createdDate
   };
@@ -84,6 +91,11 @@ function ensureSeedData() {
     theme_mode: "system",
     dark_mode: false,
     reduced_motion: false,
+    streakCount: 0,
+    lastStreakDate: "",
+    wordsWrittenToday: 0,
+    wordsTrackingDate: getBrazilDateKey(),
+    reminderSentDate: "",
     created_date: createdDate,
     updated_date: createdDate
   };
@@ -160,7 +172,33 @@ function clearSession() {
 function sanitizeUser(user) {
   if (!user) return null;
   const { password, ...safeUser } = user;
-  return clone(safeUser);
+  return clone({ ...safeUser, ...normalizeStreakUser(safeUser) });
+}
+
+function hydrateUserRecord(user) {
+  return { ...normalizeStreakUser(user), ...user };
+}
+
+function updateStoredUser(userId, updater) {
+  const users = getUsers();
+  const index = users.findIndex((entry) => entry.id === userId);
+  if (index === -1) {
+    throw createAppError("User not found", { status: 404 });
+  }
+  const current = hydrateUserRecord(users[index]);
+  const patch = updater(current) || {};
+  users[index] = {
+    ...current,
+    ...patch,
+    updated_date: nowIso()
+  };
+  saveUsers(users);
+  return users[index];
+}
+
+function syncCurrentUserRecord() {
+  const user = requireCurrentUser();
+  return updateStoredUser(user.id, (current) => reconcileStreakState(current));
 }
 
 function getCurrentUserRecord() {
@@ -286,7 +324,7 @@ ensureSeedData();
 export const base44 = {
   auth: {
     async me() {
-      return sanitizeUser(requireCurrentUser());
+      return sanitizeUser(syncCurrentUserRecord());
     },
     async login({ email, password }) {
       const normalizedEmail = email.trim().toLowerCase();
@@ -295,7 +333,7 @@ export const base44 = {
         throw createAppError("Email ou senha invalidos.", { status: 401, type: "auth_required" });
       }
       setSession(user.id);
-      return sanitizeUser(user);
+      return sanitizeUser(syncCurrentUserRecord());
     },
     async register({ email, password, display_name }) {
       const normalizedEmail = email.trim().toLowerCase();
@@ -325,25 +363,22 @@ export const base44 = {
         theme_mode: "system",
         dark_mode: false,
         reduced_motion: false,
+        streakCount: 0,
+        lastStreakDate: "",
+        wordsWrittenToday: 0,
+        wordsTrackingDate: getBrazilDateKey(),
+        reminderSentDate: "",
         created_date: timestamp,
         updated_date: timestamp
       };
       users.push(nextUser);
       saveUsers(users);
       setSession(nextUser.id);
-      return sanitizeUser(nextUser);
+      return sanitizeUser(syncCurrentUserRecord());
     },
     async updateMe(patch) {
       const user = requireCurrentUser();
-      const users = getUsers();
-      const index = users.findIndex((entry) => entry.id === user.id);
-      users[index] = {
-        ...users[index],
-        ...patch,
-        updated_date: nowIso()
-      };
-      saveUsers(users);
-      return sanitizeUser(users[index]);
+      return sanitizeUser(updateStoredUser(user.id, () => patch));
     },
     async logout() {
       clearSession();
@@ -356,6 +391,22 @@ export const base44 = {
     async findByEmail(email) {
       requireCurrentUser();
       return sanitizeUser(getUsers().find((entry) => entry.email.toLowerCase() === String(email || "").trim().toLowerCase()) || null);
+    },
+    async syncStreak() {
+      return sanitizeUser(syncCurrentUserRecord());
+    },
+    async recordWords(wordDelta) {
+      const user = requireCurrentUser();
+      return sanitizeUser(
+        updateStoredUser(user.id, (current) => {
+          const reconciled = { ...current, ...reconcileStreakState(current) };
+          return applyWordsToStreak(reconciled, Math.max(0, Number(wordDelta) || 0));
+        })
+      );
+    },
+    async markReminderSent(dateKey = getBrazilDateKey()) {
+      const user = requireCurrentUser();
+      return sanitizeUser(updateStoredUser(user.id, () => ({ reminderSentDate: dateKey })));
     },
     redirectToLogin() {
       if (typeof window !== "undefined") {

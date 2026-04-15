@@ -1,9 +1,10 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import Layout from "@/components/Layout";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
+import { isNativeApp } from "@/lib/mobile";
 import PageNotFound from "@/lib/PageNotFound";
 import { queryClientInstance } from "@/lib/query-client";
 import Dashboard from "@/pages/Dashboard";
@@ -54,6 +55,8 @@ function AuthenticatedApp() {
 }
 
 export default function App() {
+  const Router = isNativeApp() ? HashRouter : BrowserRouter;
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock, FolderOpen, Loader2, Plus, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Loader2, Medal, Plus, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ProjectCard from "@/components/ProjectCard";
+import { getStreakProgress } from "@/lib/streak";
 import { Button } from "@/components/ui/button";
 
 function SectionHeader({ icon: Icon, title, linkTo, linkLabel }) {
@@ -76,6 +77,7 @@ export default function Dashboard() {
 
   const recentProjects = useMemo(() => projects.slice(0, 6), [projects]);
   const favoriteProjects = useMemo(() => projects.filter((project) => project.is_favorite).slice(0, 4), [projects]);
+  const streakProgress = useMemo(() => getStreakProgress(user), [user]);
 
   function greeting() {
     const hour = new Date().getHours();
@@ -98,6 +100,36 @@ export default function Dashboard() {
         <p className="mb-1 text-sm font-medium text-muted-foreground">{greeting()},</p>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">{user?.display_name || user?.full_name || "Escritor"} ✨</h1>
         <p className="mt-2 text-[15px] text-muted-foreground">Continue sua história ou comece algo novo hoje.</p>
+      </div>
+
+      <div className="mb-8 rounded-2xl border border-orange-200/70 bg-[linear-gradient(135deg,rgba(251,146,60,0.14),rgba(245,158,11,0.06))] p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1 text-xs font-semibold text-orange-700 shadow-sm">
+              <Flame className="h-3.5 w-3.5" />
+              SequÃªncia diÃ¡ria
+            </div>
+            <div className="flex items-end gap-3">
+              <p className="text-3xl font-bold tracking-tight text-foreground">{user?.streakCount || 0}</p>
+              <p className="pb-1 text-sm font-medium text-muted-foreground">dias seguidos</p>
+            </div>
+            <p className="mt-2 max-w-lg text-sm text-muted-foreground">Escreva pelo menos 100 palavras por dia para manter sua sequÃªncia.</p>
+          </div>
+
+          <div className="min-w-[230px] rounded-2xl border border-white/70 bg-white/75 p-4">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="font-medium text-foreground">Meta de hoje</span>
+              <span className="text-muted-foreground">{streakProgress.words}/{streakProgress.goal} palavras</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-orange-100">
+              <div className="h-full rounded-full bg-[linear-gradient(90deg,#f97316,#ef4444)] transition-all" style={{ width: `${Math.min((streakProgress.words / streakProgress.goal) * 100, 100)}%` }} />
+            </div>
+            <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Medal className="h-3.5 w-3.5 text-amber-500" />
+              {streakProgress.completedToday ? "Meta concluÃ­da hoje" : `${streakProgress.remaining} palavras restantes`}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4">
