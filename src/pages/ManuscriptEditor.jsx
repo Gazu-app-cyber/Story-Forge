@@ -145,12 +145,14 @@ export default function ManuscriptEditor() {
 
     // Prefer browser-native spellcheck so we get visual red underlines
     // without changing the user's text or interfering with Quill formats.
+    root.spellcheck = true;
+    root.lang = "pt-BR";
     root.setAttribute("spellcheck", "true");
     root.setAttribute("lang", "pt-BR");
     root.setAttribute("autocorrect", "off");
     root.setAttribute("autocomplete", "off");
     root.setAttribute("autocapitalize", "off");
-  }, [loading, manuscript?.id, bookMode]);
+  }, [loading, manuscript?.id, bookMode, content]);
 
   const editorFont = user?.font_family || "'Crimson Pro', serif";
   const editorSize = user?.font_size || 18;
