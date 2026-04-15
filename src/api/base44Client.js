@@ -54,8 +54,33 @@ function ensureSeedData() {
     bio: "Conta de exemplo local do StoryForge.",
     profile_image: "",
     color_preset: "indigo",
+    custom_primary: "",
     font_family: "'Crimson Pro', serif",
     font_size: 18,
+    plan: "free",
+    project_view_mode: "grid",
+    theme_mode: "system",
+    dark_mode: false,
+    reduced_motion: false,
+    created_date: createdDate,
+    updated_date: createdDate
+  };
+
+  const collaboratorUser = {
+    id: "user_writer",
+    email: "writer@storyforge.app",
+    password: "storyforge",
+    full_name: "Colaborador StoryForge",
+    display_name: "Colaborador",
+    username: "writer",
+    bio: "Conta secundaria para testes de colaboracao local.",
+    profile_image: "",
+    color_preset: "sky",
+    custom_primary: "",
+    font_family: "'Inter', sans-serif",
+    font_size: 18,
+    plan: "free",
+    project_view_mode: "grid",
     theme_mode: "system",
     dark_mode: false,
     reduced_motion: false,
@@ -78,6 +103,7 @@ function ensureSeedData() {
     folder_id: demoFolder.id,
     cover_image: "",
     is_favorite: true,
+    collaborators: [],
     created_by: demoUser.email,
     created_date: createdDate,
     updated_date: createdDate
@@ -102,7 +128,7 @@ function ensureSeedData() {
     updated_date: createdDate
   };
 
-  writeStorage(STORAGE_KEYS.users, [demoUser]);
+  writeStorage(STORAGE_KEYS.users, [demoUser, collaboratorUser]);
   writeStorage(STORAGE_KEYS.Folder, [demoFolder]);
   writeStorage(STORAGE_KEYS.Project, [demoProject]);
   writeStorage(STORAGE_KEYS.Manuscript, [demoManuscript]);
@@ -209,6 +235,7 @@ function createEntityApi(entityName) {
       const nextRecord = {
         id: createId(prefix),
         ...data,
+        collaborators: entityName === "Project" ? data.collaborators || [] : data.collaborators,
         created_by: user.email,
         created_date: timestamp,
         updated_date: timestamp
@@ -290,8 +317,11 @@ export const base44 = {
         bio: "",
         profile_image: "",
         color_preset: "indigo",
+        custom_primary: "",
         font_family: "'Crimson Pro', serif",
         font_size: 18,
+        plan: "free",
+        project_view_mode: "grid",
         theme_mode: "system",
         dark_mode: false,
         reduced_motion: false,
@@ -318,6 +348,14 @@ export const base44 = {
     async logout() {
       clearSession();
       return true;
+    },
+    async listUsers() {
+      requireCurrentUser();
+      return getUsers().map((entry) => sanitizeUser(entry));
+    },
+    async findByEmail(email) {
+      requireCurrentUser();
+      return sanitizeUser(getUsers().find((entry) => entry.email.toLowerCase() === String(email || "").trim().toLowerCase()) || null);
     },
     redirectToLogin() {
       if (typeof window !== "undefined") {

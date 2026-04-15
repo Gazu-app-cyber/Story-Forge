@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { PLAN_DEFINITIONS, normalizePlan } from "@/lib/planLimits";
 import { COLOR_PRESETS, getResolvedThemeMode, getTheme, saveTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,8 @@ const themeModeOptions = [
   { value: "light", label: "Claro" },
   { value: "dark", label: "Escuro" }
 ];
+
+const planOptions = ["free", "premium", "pro"];
 
 const colorDotMap = {
   indigo: "bg-indigo-500",
@@ -52,6 +55,7 @@ export default function Settings() {
   const [bio, setBio] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [themeMode, setThemeMode] = useState("system");
+  const [plan, setPlan] = useState("free");
   const [colorPreset, setColorPreset] = useState("indigo");
   const [customPrimary, setCustomPrimary] = useState("");
   const [fontFamily, setFontFamily] = useState("'Crimson Pro', serif");
@@ -63,6 +67,7 @@ export default function Settings() {
       try {
         const currentUser = await base44.auth.me();
         setUser(currentUser);
+        setPlan(normalizePlan(currentUser.plan));
         setDisplayName(currentUser.display_name || currentUser.full_name || "");
         setUsername(currentUser.username || "");
         setBio(currentUser.bio || "");
@@ -118,6 +123,7 @@ export default function Settings() {
         username: username.trim(),
         bio: bio.trim(),
         profile_image: profileImage,
+        plan,
         ...themeData
       });
 
@@ -143,6 +149,13 @@ export default function Settings() {
     await base44.auth.deleteMe();
     toast.success("Conta removida.");
     window.location.href = "/";
+  }
+
+  async function handlePlanUpgrade(nextPlan) {
+    setPlan(nextPlan);
+    const updatedUser = await base44.auth.updateMe({ plan: nextPlan });
+    setUser(updatedUser);
+    toast.success(`Plano alterado para ${PLAN_DEFINITIONS[nextPlan].label}.`);
   }
 
   if (loading) {
@@ -207,6 +220,46 @@ export default function Settings() {
             <Label>Biografia</Label>
             <Textarea value={bio} onChange={(event) => setBio(event.target.value)} className="mt-1.5" rows={3} placeholder="Conte um pouco sobre você..." />
           </div>
+        </div>
+      </section>
+
+      <Separator />
+
+      <section className="my-8">
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold">
+          <Palette className="h-4 w-4 text-muted-foreground" />
+          Plano
+        </h2>
+        <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <p className="text-sm text-muted-foreground">Plano atual</p>
+          <p className="text-xl font-semibold text-foreground">{PLAN_DEFINITIONS[plan].label}</p>
+          <p className="mt-1 text-sm text-muted-foreground">O upgrade aqui e simulado e serve para liberar recursos do app localmente.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {planOptions.map((option) => {
+            const active = option === plan;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handlePlanUpgrade(option)}
+                className={cn(
+                  "rounded-2xl border p-4 text-left transition-all",
+                  active ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
+                )}
+              >
+                <p className="font-semibold text-foreground">{PLAN_DEFINITIONS[option].label}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {option === "free" ? "5 projetos e 20.000 palavras por manuscrito." : option === "premium" ? "Exportacao e estatisticas liberadas." : "Colaboracao, templates e modo livro."}
+                </p>
+                <div className="mt-4">
+                  <Button type="button" size="sm" variant={active ? "default" : "outline"}>
+                    {active ? "Plano atual" : "Fazer upgrade"}
+                  </Button>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 

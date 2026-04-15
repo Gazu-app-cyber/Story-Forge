@@ -3,7 +3,9 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
+import { checkFeatureAccess } from "@/lib/planLimits";
 import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
+import { getTemplateById, MANUSCRIPT_TEMPLATES } from "@/lib/manuscriptTemplates";
 import { manuscriptTypes } from "@/lib/manuscriptTypes";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +16,8 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
   const [name, setName] = useState("");
   const [type, setType] = useState("Capítulo");
   const [image, setImage] = useState("");
+  const [templateId, setTemplateId] = useState("blank");
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -21,9 +25,25 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
     setName(editManuscript?.name || "");
     setType(editManuscript?.type || "Capítulo");
     setImage(editManuscript?.image || "");
+    setTemplateId("blank");
   }, [editManuscript, open]);
 
   const typeOptions = useMemo(() => manuscriptTypes.map((item) => ({ value: item, label: item })), []);
+  const templateOptions = useMemo(() => MANUSCRIPT_TEMPLATES.map((item) => ({ value: item.id, label: item.name })), []);
+  const canUseTemplates = checkFeatureAccess("templates", user);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+      } catch (error) {
+        console.error("Failed to load user for manuscript dialog", error);
+      }
+    }
+
+    if (open) loadUser();
+  }, [open]);
 
   async function handleImageUpload(event) {
     const file = event.target.files?.[0];
@@ -40,11 +60,13 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
   async function handleSubmit() {
     if (!name.trim()) return;
     setLoading(true);
+    const selectedTemplate = getTemplateById(templateId);
     const data = {
       name: name.trim(),
       type,
       image,
-      layout: editManuscript?.layout || DEFAULT_DOCUMENT_LAYOUT,
+      content: editManuscript?.content || (canUseTemplates ? selectedTemplate.content : ""),
+      layout: editManuscript?.layout || (canUseTemplates ? selectedTemplate.layout : DEFAULT_DOCUMENT_LAYOUT),
       project_id: projectId
     };
 
@@ -82,6 +104,15 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
               <AdaptiveSelect value={type} onValueChange={setType} options={typeOptions} placeholder="Selecione um tipo" title="Selecionar categoria" />
             </div>
           </div>
+          {canUseTemplates && !editManuscript ? (
+            <div>
+              <Label>Template da historia</Label>
+              <div className="mt-1.5">
+                <AdaptiveSelect value={templateId} onValueChange={setTemplateId} options={templateOptions} placeholder="Escolha um template" title="Templates de manuscrito" />
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">{getTemplateById(templateId).description}</p>
+            </div>
+          ) : null}
           <div>
             <Label>Imagem (opcional)</Label>
             <div className="mt-1.5">

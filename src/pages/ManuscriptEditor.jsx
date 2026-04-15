@@ -2,14 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import moment from "moment";
 import "moment/locale/pt-br";
-import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Columns2, Eraser, FileImage, Highlighter, Loader2, Pencil, Redo2, ScanText, Star, Trash2, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Columns2, Download, Eraser, FileImage, Highlighter, Loader2, Pencil, Redo2, ScanText, Star, Trash2, Undo2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { columnOptions, DEFAULT_DOCUMENT_LAYOUT, getDocumentLayoutStyle, marginOptions, normalizeDocumentLayout, orientationOptions, pageSizeOptions } from "@/lib/documentLayout";
+import { exportManuscriptAsDocx, exportManuscriptAsHtml, exportManuscriptAsPdf } from "@/lib/manuscriptExport";
 import { getTypeColor, getTypeIcon } from "@/lib/manuscriptTypes";
+import { checkFeatureAccess, checkWordLimit, getWritingStats } from "@/lib/planLimits";
 import { cn } from "@/lib/utils";
 import "@/lib/theme";
 
@@ -88,6 +91,7 @@ export default function ManuscriptEditor() {
   const nameInputRef = useRef(null);
   const latestContentRef = useRef("");
   const latestLayoutRef = useRef(DEFAULT_DOCUMENT_LAYOUT);
+  const wordLimitWarningRef = useRef(false);
 
   const [manuscript, setManuscript] = useState(null);
   const [project, setProject] = useState(null);
@@ -98,6 +102,7 @@ export default function ManuscriptEditor() {
   const [loading, setLoading] = useState(true);
   const [savingState, setSavingState] = useState("idle");
   const [showDelete, setShowDelete] = useState(false);
+  const [bookMode, setBookMode] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -226,6 +231,16 @@ export default function ManuscriptEditor() {
   );
 
   function handleContentChange(value) {
+    const limitStatus = checkWordLimit(value, user);
+    if (!limitStatus.allowed) {
+      setSavingState("idle");
+      if (!wordLimitWarningRef.current) {
+        toast.error(limitStatus.message);
+        wordLimitWarningRef.current = true;
+      }
+      return;
+    }
+    wordLimitWarningRef.current = false;
     setContent(value);
     queueSave(value, latestLayoutRef.current);
   }
@@ -268,7 +283,32 @@ export default function ManuscriptEditor() {
     }
   }
 
-  const stats = useMemo(() => ({ words: countWords(content), chars: getPlainText(content).length }), [content]);
+  const stats = useMemo(() => getWritingStats(content), [content]);
+  const wordLimitStatus = useMemo(() => checkWordLimit(content, user), [content, user]);
+  const canUseStats = checkFeatureAccess("stats", user);
+  const canExport = checkFeatureAccess("export", user);
+  const canUseBookMode = checkFeatureAccess("bookMode", user);
+  const bookPages = useMemo(() => {
+    const plainText = getPlainText(content).replace(/\s+/g, " ").trim();
+    if (!plainText) return ["Documento vazio."];
+    return plainText.match(/.{1,1400}(\s|$)/g) || [plainText];
+  }, [content]);
+
+  function handleExport(format) {
+    if (!canExport) {
+      toast.error("Recurso disponivel apenas para Premium e Pro.");
+      return;
+    }
+    if (format === "pdf") {
+      exportManuscriptAsPdf({ title: manuscript.name, html: content });
+      return;
+    }
+    if (format === "html") {
+      exportManuscriptAsHtml({ title: manuscript.name, html: content });
+      return;
+    }
+    exportManuscriptAsDocx({ title: manuscript.name, html: content });
+  }
 
   if (loading) {
     return (
@@ -358,8 +398,11 @@ export default function ManuscriptEditor() {
         <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
             <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-medium text-primary">Plano {(user?.plan || "free").toUpperCase()}</span>
               <span>{stats.words} palavras</span>
-              <span>{stats.chars} caracteres</span>
+              {canUseStats ? <span>{stats.characters} caracteres</span> : null}
+              {canUseStats ? <span>{stats.pages} paginas estimadas</span> : null}
+              {!canUseStats && wordLimitStatus.limit !== Infinity ? <span>{wordLimitStatus.remaining} palavras restantes</span> : null}
               <span>Fonte {editorSize}px</span>
               <span className="inline-flex items-center gap-1">
                 <AlignJustify className="h-3.5 w-3.5" />
@@ -379,8 +422,36 @@ export default function ManuscriptEditor() {
                 <Eraser className="h-3.5 w-3.5" />
                 Limpar
               </Button>
+              {canExport ? (
+                <>
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => handleExport("pdf")}>
+                    <Download className="h-3.5 w-3.5" />
+                    PDF
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => handleExport("docx")}>
+                    <Download className="h-3.5 w-3.5" />
+                    DOCX
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => handleExport("html")}>
+                    <Download className="h-3.5 w-3.5" />
+                    HTML
+                  </Button>
+                </>
+              ) : null}
+              {canUseBookMode ? (
+                <Button type="button" variant={bookMode ? "default" : "outline"} size="sm" className="h-8 gap-1.5" onClick={() => setBookMode((current) => !current)}>
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Modo Livro
+                </Button>
+              ) : null}
             </div>
           </div>
+
+          {!wordLimitStatus.allowed ? (
+            <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Voce atingiu o limite do plano gratuito. Faca upgrade para continuar.
+            </div>
+          ) : null}
 
           <div className="mb-4 grid gap-3 rounded-2xl border border-border bg-card p-4 md:grid-cols-4">
             <div>
@@ -452,6 +523,21 @@ export default function ManuscriptEditor() {
             .ql-font-merriweather { font-family: 'Merriweather', serif; }
           `}</style>
 
+          {bookMode ? (
+            <div className="book-preview-shell rounded-[1.5rem] border border-border/70 bg-[hsl(var(--muted)/0.55)] p-4 shadow-sm sm:p-6">
+              <div className="grid gap-5 lg:grid-cols-2">
+                {bookPages.map((page, index) => (
+                  <article key={`${index}-${page.length}`} className="book-page rounded-[1.75rem] border border-border bg-card p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+                    <div className="mb-6 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      <span>{project?.name || "StoryForge"}</span>
+                      <span>Pagina {index + 1}</span>
+                    </div>
+                    <div className="book-page-body whitespace-pre-wrap text-[15px] leading-8 text-foreground">{page}</div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div className="word-workspace rounded-[1.5rem] border border-border/70 bg-[hsl(var(--muted)/0.55)] p-3 shadow-sm sm:p-5">
             <div className="writer-editor word-document overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_20px_60px_rgba(15,23,42,0.08)]" style={pageStyle}>
               <ReactQuill
@@ -466,6 +552,7 @@ export default function ManuscriptEditor() {
               />
             </div>
           </div>
+          )}
 
           <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
             <div className="mb-2 flex items-center gap-2 font-medium text-foreground">

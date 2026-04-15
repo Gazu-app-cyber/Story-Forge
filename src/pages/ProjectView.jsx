@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import moment from "moment";
 import "moment/locale/pt-br";
-import { BookOpen, LayoutGrid, List, Loader2, Pencil, Plus, Search, Star } from "lucide-react";
+import { BookOpen, Crown, LayoutGrid, List, Loader2, Pencil, Plus, Search, Star, Users } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
@@ -11,9 +11,11 @@ import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ManuscriptCard from "@/components/ManuscriptCard";
 import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
 import { getTypeColor, getTypeIcon, manuscriptTypes } from "@/lib/manuscriptTypes";
+import { checkFeatureAccess } from "@/lib/planLimits";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 moment.locale("pt-br");
 
@@ -29,6 +31,7 @@ export default function ProjectView() {
   const [project, setProject] = useState(null);
   const [manuscripts, setManuscripts] = useState([]);
   const [folders, setFolders] = useState([]);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("updated_date");
@@ -38,18 +41,22 @@ export default function ProjectView() {
   const [editMs, setEditMs] = useState(null);
   const [deleteMs, setDeleteMs] = useState(null);
   const [showEditProject, setShowEditProject] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   async function loadData() {
     try {
       setLoading(true);
-      const [projectData, manuscriptData, folderData] = await Promise.all([
+      const [projectData, manuscriptData, folderData, currentUser] = await Promise.all([
         base44.entities.Project.filter({ id }, "-updated_date", 1),
         base44.entities.Manuscript.filter({ project_id: id }, "-updated_date", 500),
-        base44.entities.Folder.list("-created_date", 50)
+        base44.entities.Folder.list("-created_date", 50),
+        base44.auth.me()
       ]);
       setProject(projectData[0]);
       setManuscripts(manuscriptData);
       setFolders(folderData);
+      setUser(currentUser);
     } catch (error) {
       console.error("Failed to load project view", error);
       setProject(null);
@@ -113,6 +120,47 @@ export default function ProjectView() {
     loadData();
   }
 
+  async function handleInviteCollaborator() {
+    if (!inviteEmail.trim()) return;
+    if (!checkFeatureAccess("collaboration", user)) {
+      toast.error("Recurso disponivel apenas para o plano Pro.");
+      return;
+    }
+    if ((project.collaborators || []).length >= 10) {
+      toast.error("O plano Pro permite no maximo 10 colaboradores por projeto.");
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const invitedUser = await base44.auth.findByEmail(inviteEmail);
+      if (!invitedUser) {
+        toast.error("Usuario nao encontrado.");
+        return;
+      }
+      if (invitedUser.email === user?.email) {
+        toast.error("Voce ja e o dono deste projeto.");
+        return;
+      }
+      if ((project.collaborators || []).includes(invitedUser.id)) {
+        toast.error("Este usuario ja foi adicionado.");
+        return;
+      }
+
+      await base44.entities.Project.update(id, {
+        collaborators: [...(project.collaborators || []), invitedUser.id]
+      });
+      setInviteEmail("");
+      toast.success("Colaborador adicionado ao projeto.");
+      loadData();
+    } catch (error) {
+      console.error("Failed to invite collaborator", error);
+      toast.error(error?.message || "Nao foi possivel adicionar o colaborador.");
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -171,6 +219,52 @@ export default function ProjectView() {
               </span>
               <span>•</span>
               <span>Editado {moment(project.updated_date).fromNow()}</span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" />
+                {(project.collaborators || []).length} colaboradores
+              </span>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Colaboracao</p>
+                  <p className="text-sm text-muted-foreground">Convide ate 10 usuarios existentes para este projeto.</p>
+                </div>
+                <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", checkFeatureAccess("collaboration", user) ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800")}>
+                  {checkFeatureAccess("collaboration", user) ? "Pro liberado" : "Somente Pro"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="email do colaborador" className="h-10" />
+                <Button
+                  type="button"
+                  className="gap-2 sm:w-auto"
+                  onClick={
+                    checkFeatureAccess("collaboration", user)
+                      ? handleInviteCollaborator
+                      : () =>
+                          base44.auth.updateMe({ plan: "pro" }).then((updatedUser) => {
+                            setUser(updatedUser);
+                            toast.success("Plano alterado para Pro.");
+                          })
+                  }
+                  disabled={inviteLoading}
+                >
+                  <Crown className="h-4 w-4" />
+                  {checkFeatureAccess("collaboration", user) ? "Convidar" : "Fazer upgrade"}
+                </Button>
+              </div>
+              {(project.collaborators || []).length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(project.collaborators || []).map((collaboratorId) => (
+                    <span key={collaboratorId} className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+                      {collaboratorId}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {typeGroups.length ? (

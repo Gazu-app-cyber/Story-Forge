@@ -3,6 +3,7 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
+import { checkProjectLimit } from "@/lib/planLimits";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,15 @@ export default function CreateProjectDialog({ open, onOpenChange, folders, editP
     };
 
     try {
+      if (!editProject) {
+        const [currentUser, currentProjects] = await Promise.all([base44.auth.me(), base44.entities.Project.list("-updated_date", 500)]);
+        const limitStatus = checkProjectLimit(currentUser, currentProjects.length);
+        if (!limitStatus.allowed) {
+          toast.error(limitStatus.message);
+          return;
+        }
+      }
+
       if (editProject) {
         await base44.entities.Project.update(editProject.id, data);
       } else {

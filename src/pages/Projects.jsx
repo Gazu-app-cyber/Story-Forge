@@ -5,6 +5,7 @@ import AdaptiveSelect from "@/components/AdaptiveSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ProjectCard from "@/components/ProjectCard";
+import { checkProjectLimit, PLAN_DEFINITIONS } from "@/lib/planLimits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -87,6 +88,7 @@ export default function Projects() {
     });
     return result;
   }, [projects, search, sortBy]);
+  const projectLimitStatus = checkProjectLimit(user, projects.length);
 
   async function handleToggleFavorite(project) {
     await base44.entities.Project.update(project.id, { is_favorite: !project.is_favorite });
@@ -137,6 +139,14 @@ export default function Projects() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projetos</h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">{projects.length} projeto{projects.length !== 1 ? "s" : ""}</p>
+          {user ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 font-medium text-primary">Plano {PLAN_DEFINITIONS[user.plan || "free"].label}</span>
+              <span className="rounded-full border border-border bg-card px-3 py-1.5 text-muted-foreground">
+                {projectLimitStatus.limit === Infinity ? "Projetos ilimitados" : `${projectLimitStatus.remaining} de ${projectLimitStatus.limit} projetos restantes`}
+              </span>
+            </div>
+          ) : null}
         </div>
         <Button onClick={() => setShowCreate(true)} size="sm" className="gap-2 shrink-0">
           <Plus className="h-4 w-4" />
@@ -169,6 +179,25 @@ export default function Projects() {
         <span className="rounded-full border border-border bg-card px-3 py-1.5">{projectSortOptions.find((option) => option.value === sortBy)?.label}</span>
         {search ? <span className="rounded-full border border-border bg-card px-3 py-1.5">Busca: {search}</span> : null}
       </div>
+
+      {!projectLimitStatus.allowed ? (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>Voce atingiu o limite do plano gratuito. Faca upgrade para continuar.</span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                base44.auth.updateMe({ plan: "premium" }).then((updatedUser) => {
+                  setUser(updatedUser);
+                })
+              }
+            >
+              Fazer upgrade
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {filteredProjects.length ? (
         <div className={viewMode === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-3"}>

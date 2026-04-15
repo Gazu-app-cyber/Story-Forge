@@ -354,3 +354,27 @@
     min-width: 0;
   }
 }
+
+.book-preview-shell {
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 32%),
+    hsl(var(--muted) / 0.55);
+}
+
+.book-page {
+  min-height: 32rem;
+  position: relative;
+}
+
+.book-page::after {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.25rem;
+  pointer-events: none;
+}
+
+.book-page-body {
+  font-family: "Source Serif 4", serif;
+}
