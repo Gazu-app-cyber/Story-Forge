@@ -138,6 +138,20 @@ export default function ManuscriptEditor() {
     };
   }, [id]);
 
+  useEffect(() => {
+    const editor = quillRef.current?.getEditor?.();
+    const root = editor?.root;
+    if (!root) return;
+
+    // Prefer browser-native spellcheck so we get visual red underlines
+    // without changing the user's text or interfering with Quill formats.
+    root.setAttribute("spellcheck", "true");
+    root.setAttribute("lang", "pt-BR");
+    root.setAttribute("autocorrect", "off");
+    root.setAttribute("autocomplete", "off");
+    root.setAttribute("autocapitalize", "off");
+  }, [loading, manuscript?.id, bookMode]);
+
   const editorFont = user?.font_family || "'Crimson Pro', serif";
   const editorSize = user?.font_size || 18;
   const quillFontClass = editorFonts[editorFont] || "crimson";
@@ -547,7 +561,8 @@ export default function ManuscriptEditor() {
                 onChange={handleContentChange}
                 modules={quillModules}
                 formats={quillFormats}
-              placeholder="Comece a escrever sua história..."
+                placeholder="Comece a escrever sua história..."
+                preserveWhitespace
                 className={cn("min-h-[70vh]", `font-${quillFontClass}`)}
               />
             </div>
