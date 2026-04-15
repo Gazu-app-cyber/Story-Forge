@@ -3,6 +3,7 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
+import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
 import { manuscriptTypes } from "@/lib/manuscriptTypes";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -43,6 +44,7 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
       name: name.trim(),
       type,
       image,
+      layout: editManuscript?.layout || DEFAULT_DOCUMENT_LAYOUT,
       project_id: projectId
     };
 

@@ -92,7 +92,7 @@ export default function FolderView() {
         <EmptyState icon={FolderOpen} title="Pasta vazia" description="Adicione projetos a esta pasta." actionLabel="Criar Projeto" onAction={() => setShowCreate(true)} />
       )}
 
-      <CreateProjectDialog open={showCreate} onOpenChange={setShowCreate} folders={folders} onSuccess={loadData} />
+      <CreateProjectDialog open={showCreate} onOpenChange={setShowCreate} folders={folders} initialFolderId={id} onSuccess={loadData} />
     </div>
   );
 }

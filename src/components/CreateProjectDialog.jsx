@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export default function CreateProjectDialog({ open, onOpenChange, folders, editProject, onSuccess }) {
+export default function CreateProjectDialog({ open, onOpenChange, folders, editProject, initialFolderId = "", onSuccess }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [folderId, setFolderId] = useState("none");
@@ -20,9 +20,9 @@ export default function CreateProjectDialog({ open, onOpenChange, folders, editP
   useEffect(() => {
     setName(editProject?.name || "");
     setDescription(editProject?.description || "");
-    setFolderId(editProject?.folder_id || "none");
+    setFolderId(editProject?.folder_id || initialFolderId || "none");
     setCoverImage(editProject?.cover_image || "");
-  }, [editProject, open]);
+  }, [editProject, initialFolderId, open]);
 
   const folderOptions = useMemo(
     () => [{ value: "none", label: "Sem pasta" }, ...(folders || []).map((folder) => ({ value: folder.id, label: folder.name }))],

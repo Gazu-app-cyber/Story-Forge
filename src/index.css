@@ -137,20 +137,35 @@
 }
 
 .word-document .ql-editor {
-  min-height: calc(100vh - 20rem);
-  max-width: 8.27in;
+  min-height: max(calc(100vh - 20rem), var(--page-min-height, 11.69in));
+  max-width: var(--page-width, 8.27in);
   margin: 0 auto;
-  padding: 1.1in 0.95in 1.35in;
+  padding: calc(var(--page-margin, 0.95in) + 0.15in) var(--page-margin, 0.95in) 1.35in;
   color: hsl(var(--foreground));
+  font-family: var(--editor-font, "Crimson Pro", serif);
+  font-size: var(--editor-size, 18px);
   line-height: 1.9;
   letter-spacing: 0.002em;
+  column-count: var(--page-columns, 1);
+  column-gap: 2rem;
+  column-fill: balance;
 }
 
 .word-document .ql-editor.ql-blank::before {
-  left: 0.95in;
-  right: 0.95in;
+  left: var(--page-margin, 0.95in);
+  right: var(--page-margin, 0.95in);
   color: hsl(var(--muted-foreground));
   font-style: italic;
+}
+
+.word-document .ql-editor img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+  border-radius: 0.85rem;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+  break-inside: avoid;
 }
 
 .word-document .ql-snow .ql-picker {
@@ -191,6 +206,18 @@
 .word-document .ql-snow .ql-picker.ql-size,
 .word-document .ql-snow .ql-picker.ql-header {
   min-width: 6.25rem;
+}
+
+.word-document .ql-toolbar .ql-border::after {
+  content: "[]";
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.word-document .ql-toolbar .ql-border-clear::after {
+  content: "x[]";
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .word-document .ql-snow .ql-picker.ql-font .ql-picker-label::before,
@@ -313,6 +340,7 @@
   .word-document .ql-editor {
     min-height: calc(100vh - 16rem);
     padding: 1.35rem 1rem 5rem;
+    column-gap: 1rem;
   }
 
   .word-document .ql-editor.ql-blank::before {

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import moment from "moment";
 import "moment/locale/pt-br";
-import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Eraser, Loader2, Pencil, Redo2, Star, Trash2, Undo2 } from "lucide-react";
+import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Columns2, Eraser, FileImage, Highlighter, Loader2, Pencil, Redo2, ScanText, Star, Trash2, Undo2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import AdaptiveSelect from "@/components/AdaptiveSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { columnOptions, DEFAULT_DOCUMENT_LAYOUT, getDocumentLayoutStyle, marginOptions, normalizeDocumentLayout, orientationOptions, pageSizeOptions } from "@/lib/documentLayout";
 import { getTypeColor, getTypeIcon } from "@/lib/manuscriptTypes";
 import { cn } from "@/lib/utils";
 import "@/lib/theme";
@@ -21,37 +23,39 @@ const Size = Quill.import("attributors/style/size");
 Size.whitelist = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
 Quill.register(Size, true);
 
-const quillModules = {
-  toolbar: {
-    container: [
-      [{ font: Font.whitelist }],
-      [{ size: Size.whitelist }],
-      [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline"],
-      [{ align: ["", "center", "right", "justify"] }],
-      [{ list: "ordered" }, { list: "bullet" }],
-      [{ color: [] }, { background: [] }],
-      ["link"],
-      ["clean"],
-      ["undo", "redo"]
-    ],
-    handlers: {
-      undo() {
-        this.quill.history.undo();
-      },
-      redo() {
-        this.quill.history.redo();
-      }
-    }
-  },
-  history: {
-    delay: 600,
-    maxStack: 200,
-    userOnly: true
-  }
-};
+const Parchment = Quill.import("parchment");
+const ParagraphBorder = new Parchment.Attributor.Style("paragraph-border", "border", { scope: Parchment.Scope.BLOCK });
+const ParagraphPadding = new Parchment.Attributor.Style("paragraph-padding", "padding", { scope: Parchment.Scope.BLOCK });
+const ParagraphRadius = new Parchment.Attributor.Style("paragraph-radius", "border-radius", { scope: Parchment.Scope.BLOCK });
+Quill.register(ParagraphBorder, true);
+Quill.register(ParagraphPadding, true);
+Quill.register(ParagraphRadius, true);
 
-const quillFormats = ["font", "size", "header", "bold", "italic", "underline", "align", "list", "bullet", "color", "background", "link"];
+const BORDER_STYLE = "1px solid rgba(148, 163, 184, 0.72)";
+const BORDER_PADDING = "0.85rem 1rem";
+const BORDER_RADIUS = "0.9rem";
+
+const quillFormats = [
+  "font",
+  "size",
+  "header",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "blockquote",
+  "script",
+  "align",
+  "list",
+  "bullet",
+  "color",
+  "background",
+  "link",
+  "image",
+  "paragraph-border",
+  "paragraph-padding",
+  "paragraph-radius"
+];
 
 const editorFonts = {
   "'Source Sans 3', sans-serif": "source-sans",
@@ -68,16 +72,27 @@ function countWords(html) {
   return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length;
 }
 
+function getPlainText(html) {
+  return html.replace(/<[^>]*>/g, "");
+}
+
+function getRange(quill) {
+  return quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+}
+
 export default function ManuscriptEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const quillRef = useRef(null);
   const saveTimeout = useRef(null);
   const nameInputRef = useRef(null);
+  const latestContentRef = useRef("");
+  const latestLayoutRef = useRef(DEFAULT_DOCUMENT_LAYOUT);
 
   const [manuscript, setManuscript] = useState(null);
   const [project, setProject] = useState(null);
   const [content, setContent] = useState("");
+  const [layout, setLayout] = useState(DEFAULT_DOCUMENT_LAYOUT);
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -91,10 +106,15 @@ export default function ManuscriptEditor() {
         const [manuscriptList, currentUser] = await Promise.all([base44.entities.Manuscript.filter({ id }), base44.auth.me()]);
         const currentManuscript = manuscriptList[0];
         if (currentManuscript) {
+          const nextContent = currentManuscript.content || "";
+          const nextLayout = normalizeDocumentLayout(currentManuscript.layout);
           setManuscript(currentManuscript);
-          setContent(currentManuscript.content || "");
+          setContent(nextContent);
+          setLayout(nextLayout);
           setName(currentManuscript.name);
           setUser(currentUser);
+          latestContentRef.current = nextContent;
+          latestLayoutRef.current = nextLayout;
           const projectList = await base44.entities.Project.filter({ id: currentManuscript.project_id });
           setProject(projectList[0]);
         }
@@ -116,29 +136,104 @@ export default function ManuscriptEditor() {
   const editorFont = user?.font_family || "'Crimson Pro', serif";
   const editorSize = user?.font_size || 18;
   const quillFontClass = editorFonts[editorFont] || "crimson";
-  const pageStyle = useMemo(
-    () => ({
-      "--editor-font": editorFont,
-      "--editor-size": `${editorSize}px`
-    }),
-    [editorFont, editorSize]
-  );
+  const pageStyle = useMemo(() => getDocumentLayoutStyle(layout, editorFont, editorSize), [layout, editorFont, editorSize]);
 
-  const saveContent = useCallback(
-    async (newContent) => {
+  const saveDocument = useCallback(
+    async (newContent, nextLayout) => {
       setSavingState("saving");
-      await base44.entities.Manuscript.update(id, { content: newContent });
+      await base44.entities.Manuscript.update(id, { content: newContent, layout: nextLayout });
       setSavingState("saved");
       setTimeout(() => setSavingState("idle"), 2500);
     },
     [id]
   );
 
+  const queueSave = useCallback(
+    (nextContent, nextLayout) => {
+      latestContentRef.current = nextContent;
+      latestLayoutRef.current = nextLayout;
+      setSavingState("saving");
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(() => saveDocument(latestContentRef.current, latestLayoutRef.current), 900);
+    },
+    [saveDocument]
+  );
+
+  const quillModules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ font: Font.whitelist }],
+          [{ size: Size.whitelist }],
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ script: "super" }, { script: "sub" }],
+          [{ align: ["", "center", "right", "justify"] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ color: [] }, { background: [] }],
+          ["blockquote", "link", "image"],
+          ["border", "border-clear"],
+          ["clean"],
+          ["undo", "redo"]
+        ],
+        handlers: {
+          undo() {
+            this.quill.history.undo();
+          },
+          redo() {
+            this.quill.history.redo();
+          },
+          image: async function imageHandler() {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const { file_url } = await base44.integrations.Core.UploadFile({ file });
+              const range = getRange(this.quill);
+              this.quill.insertEmbed(range.index, "image", file_url, "user");
+              this.quill.setSelection(range.index + 1, 0, "silent");
+              queueSave(this.quill.root.innerHTML, latestLayoutRef.current);
+            };
+            input.click();
+          },
+          border: function borderHandler() {
+            const range = getRange(this.quill);
+            const [line] = this.quill.getLine(range.index);
+            const hasBorder = Boolean(line?.domNode?.style?.border);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-border", hasBorder ? false : BORDER_STYLE);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-padding", hasBorder ? false : BORDER_PADDING);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-radius", hasBorder ? false : BORDER_RADIUS);
+            queueSave(this.quill.root.innerHTML, latestLayoutRef.current);
+          },
+          "border-clear": function clearBorderHandler() {
+            const range = getRange(this.quill);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-border", false);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-padding", false);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-radius", false);
+            queueSave(this.quill.root.innerHTML, latestLayoutRef.current);
+          }
+        }
+      },
+      history: {
+        delay: 600,
+        maxStack: 200,
+        userOnly: true
+      }
+    }),
+    [queueSave]
+  );
+
   function handleContentChange(value) {
     setContent(value);
-    setSavingState("saving");
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => saveContent(value), 1200);
+    queueSave(value, latestLayoutRef.current);
+  }
+
+  function updateLayout(patch) {
+    const nextLayout = normalizeDocumentLayout({ ...latestLayoutRef.current, ...patch });
+    setLayout(nextLayout);
+    queueSave(latestContentRef.current, nextLayout);
   }
 
   async function handleNameSave() {
@@ -173,7 +268,7 @@ export default function ManuscriptEditor() {
     }
   }
 
-  const stats = useMemo(() => ({ words: countWords(content), chars: content.replace(/<[^>]*>/g, "").length }), [content]);
+  const stats = useMemo(() => ({ words: countWords(content), chars: getPlainText(content).length }), [content]);
 
   if (loading) {
     return (
@@ -287,6 +382,37 @@ export default function ManuscriptEditor() {
             </div>
           </div>
 
+          <div className="mb-4 grid gap-3 rounded-2xl border border-border bg-card p-4 md:grid-cols-4">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <ScanText className="h-3.5 w-3.5" />
+                Margens
+              </div>
+              <AdaptiveSelect value={layout.margin} onValueChange={(value) => updateLayout({ margin: value })} options={marginOptions} placeholder="Margens" title="Margens" />
+            </div>
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <AlignJustify className="h-3.5 w-3.5" />
+                Orientacao
+              </div>
+              <AdaptiveSelect value={layout.orientation} onValueChange={(value) => updateLayout({ orientation: value })} options={orientationOptions} placeholder="Orientacao" title="Orientacao" />
+            </div>
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Highlighter className="h-3.5 w-3.5" />
+                Tamanho
+              </div>
+              <AdaptiveSelect value={layout.pageSize} onValueChange={(value) => updateLayout({ pageSize: value })} options={pageSizeOptions} placeholder="Tamanho" title="Tamanho da pagina" />
+            </div>
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Columns2 className="h-3.5 w-3.5" />
+                Colunas
+              </div>
+              <AdaptiveSelect value={String(layout.columns)} onValueChange={(value) => updateLayout({ columns: Number(value) })} options={columnOptions} placeholder="Colunas" title="Colunas" />
+            </div>
+          </div>
+
           <style>{`
             .writer-editor .ql-editor {
               font-family: var(--editor-font);
@@ -329,16 +455,27 @@ export default function ManuscriptEditor() {
           <div className="word-workspace rounded-[1.5rem] border border-border/70 bg-[hsl(var(--muted)/0.55)] p-3 shadow-sm sm:p-5">
             <div className="writer-editor word-document overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_20px_60px_rgba(15,23,42,0.08)]" style={pageStyle}>
               <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={content}
-              onChange={handleContentChange}
-              modules={quillModules}
-              formats={quillFormats}
+                ref={quillRef}
+                theme="snow"
+                value={content}
+                onChange={handleContentChange}
+                modules={quillModules}
+                formats={quillFormats}
               placeholder="Comece a escrever sua história..."
-              className={cn("min-h-[70vh]", `font-${quillFontClass}`)}
+                className={cn("min-h-[70vh]", `font-${quillFontClass}`)}
               />
             </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            <div className="mb-2 flex items-center gap-2 font-medium text-foreground">
+              <FileImage className="h-4 w-4 text-primary" />
+              Editor expandido
+            </div>
+            <p>
+              A barra agora suporta imagem inline, destaque de texto, borda de paragrafo e configuracoes de
+              pagina persistidas junto ao manuscrito.
+            </p>
           </div>
 
           <div className="mt-3 flex justify-end text-[11px] tabular-nums text-muted-foreground">{stats.words} palavras</div>

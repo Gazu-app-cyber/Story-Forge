@@ -90,6 +90,12 @@ function ensureSeedData() {
     image: "",
     type: "Capítulo",
     content: "<h1>Capitulo 1</h1><p>Era uma vez um escritor tentando libertar seu app de um backend externo.</p>",
+    layout: {
+      margin: "normal",
+      orientation: "portrait",
+      pageSize: "A4",
+      columns: 1
+    },
     is_favorite: true,
     created_by: demoUser.email,
     created_date: createdDate,

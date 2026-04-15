@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import CreateManuscriptDialog from "@/components/CreateManuscriptDialog";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ManuscriptCard from "@/components/ManuscriptCard";
+import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
 import { getTypeColor, getTypeIcon, manuscriptTypes } from "@/lib/manuscriptTypes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ export default function ProjectView() {
       type: manuscript.type,
       image: manuscript.image,
       content: manuscript.content,
+      layout: manuscript.layout || DEFAULT_DOCUMENT_LAYOUT,
       project_id: id
     });
     loadData();
