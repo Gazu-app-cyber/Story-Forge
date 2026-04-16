@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
+import AppErrorBoundary from "@/components/AppErrorBoundary";
 import LayoutShellFixed from "@/components/LayoutShellFixed";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import { Toaster } from "@/components/ui/sonner";
@@ -35,30 +36,33 @@ function AuthenticatedApp() {
 
   if (isLoadingAuth || isLoadingPublicSettings) return <LoadingScreen />;
 
-  if (authError) {
-    if (authError.type === "user_not_registered") return <UserNotRegisteredError />;
-    if (authError.type === "auth_required") return <AuthPage />;
-  }
-
   return (
     <Routes>
+      <Route path="/obra/:id" element={<PublicWorkPageFixed />} />
+      <Route path="/autor/:username" element={<PublicProfilePage />} />
+      {authError?.type === "user_not_registered" ? (
+        <Route path="*" element={<UserNotRegisteredError />} />
+      ) : authError?.type === "auth_required" ? (
+        <Route path="*" element={<AuthPage />} />
+      ) : (
+        <>
       <Route path="/manuscript/:id" element={<ManuscriptEditorPage />} />
-      <Route element={<LayoutShellFixed />}>
-        <Route path="/" element={<DashboardHomeRefined />} />
-        <Route path="/discover" element={<DiscoverHub />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/public-works" element={<PublicWorksPage />} />
-        <Route path="/project/:id" element={<ProjectView />} />
-        <Route path="/folders" element={<Folders />} />
-        <Route path="/folder/:id" element={<FolderView />} />
-        <Route path="/favorites" element={<Favorites />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/public-profile" element={<PublicProfilePage />} />
-        <Route path="/autor/:username" element={<PublicProfilePage />} />
-        <Route path="/obra/:id" element={<PublicWorkPageFixed />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
+          <Route element={<LayoutShellFixed />}>
+            <Route path="/" element={<DashboardHomeRefined />} />
+            <Route path="/discover" element={<DiscoverHub />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/public-works" element={<PublicWorksPage />} />
+            <Route path="/project/:id" element={<ProjectView />} />
+            <Route path="/folders" element={<Folders />} />
+            <Route path="/folder/:id" element={<FolderView />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/public-profile" element={<PublicProfilePage />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<PageNotFound />} />
+          </Route>
+        </>
+      )}
     </Routes>
   );
 }
@@ -67,13 +71,15 @@ export default function App() {
   const Router = isNativeApp() ? HashRouter : BrowserRouter;
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster richColors position="top-right" />
-      </QueryClientProvider>
-    </AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <AuthenticatedApp />
+          </Router>
+          <Toaster richColors position="top-right" />
+        </QueryClientProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
   );
 }

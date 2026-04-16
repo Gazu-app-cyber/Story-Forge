@@ -62,7 +62,7 @@ export default function PublicWorkPageFixed() {
 
       const [currentUser, users, manuscriptList, projectList] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.auth.listUsers().catch(() => []),
+        base44.social.listPublicUsers().catch(() => []),
         base44.entities.Manuscript.list("-updated_date", 500).catch(() => []),
         base44.social.listDiscoverWorks().catch(() => [])
       ]);
