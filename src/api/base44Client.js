@@ -1,5 +1,7 @@
 ﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
+import { createPoll, createPost, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
+
 const STORAGE_KEYS = {
   users: "storyforge_users",
   session: "storyforge_session",
@@ -90,6 +92,7 @@ function ensureSeedData() {
   const users = readStorage(STORAGE_KEYS.users, null);
   if (users?.length) {
     ensureDiscoverySeedData();
+    ensureSocialContentSeed();
     return;
   }
 
@@ -336,6 +339,7 @@ function ensureSeedData() {
   writeStorage(STORAGE_KEYS.Folder, [demoFolder]);
   writeStorage(STORAGE_KEYS.Project, [demoProject, collaboratorProject, publicAuthorProject]);
   writeStorage(STORAGE_KEYS.Manuscript, [demoManuscript, collaboratorManuscript, publicAuthorManuscript]);
+  ensureSocialContentSeed();
 }
 
 function ensureDiscoverySeedData() {
@@ -586,7 +590,7 @@ function filterRecords(records, criteria) {
 }
 
 function withUserScope(records, email) {
-  return records.filter((record) => record.created_by === email);
+  return records.filter((record) => !record.created_by || record.created_by === email);
 }
 
 function createEntityApi(entityName) {
@@ -868,8 +872,22 @@ export const base44 = {
           following_count: (author.following_ids || []).length,
           is_following: currentUser ? (currentUser.following_ids || []).includes(author.id) : false
         },
-        works: publicProjects
+        works: publicProjects,
+        posts: listPostsByAuthor(author.email),
+        polls: listPollsByAuthor(author.email)
       };
+    },
+    async createPost(data) {
+      const currentUser = requireCurrentUser();
+      return createPost(data, currentUser.email);
+    },
+    async createPoll(data) {
+      const currentUser = requireCurrentUser();
+      return createPoll(data, currentUser.email);
+    },
+    async votePoll(pollId, optionId) {
+      const currentUser = requireCurrentUser();
+      return votePoll(pollId, optionId, currentUser.id);
     },
     async toggleFollow(authorId) {
       const currentUser = requireCurrentUser();
