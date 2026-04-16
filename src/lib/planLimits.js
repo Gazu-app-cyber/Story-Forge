@@ -1,7 +1,7 @@
 export const PLAN_DEFINITIONS = {
   free: {
     label: "Free",
-    projectLimit: 5,
+    projectLimit: 10,
     wordLimitPerManuscript: 20000,
     collaboratorLimit: 0
   },
@@ -66,7 +66,7 @@ export function checkProjectLimit(user, projectCount) {
     allowed,
     limit,
     remaining: limit === Infinity ? Infinity : Math.max(limit - projectCount, 0),
-    message: allowed ? "" : "Voce atingiu o limite do plano gratuito. Faca upgrade para continuar."
+    message: allowed ? "" : "Você atingiu o limite do plano gratuito. Faça upgrade para continuar."
   };
 }
 
@@ -80,7 +80,7 @@ export function checkWordLimit(contentOrWordCount, user) {
     limit,
     words,
     remaining: limit === Infinity ? Infinity : Math.max(limit - words, 0),
-    message: allowed ? "" : "Voce atingiu o limite do plano gratuito. Faca upgrade para continuar."
+    message: allowed ? "" : "Você atingiu o limite do plano gratuito. Faça upgrade para continuar."
   };
 }
 
@@ -95,6 +95,6 @@ export function checkCollaborationLimit(user, collaboratorCount) {
     allowed,
     limit,
     remaining: limit === Infinity ? Infinity : Math.max(limit - collaboratorCount, 0),
-    message: hasAccess ? "Voce atingiu o limite de colaboradores do seu plano." : "Colaboracao nao esta disponivel no plano gratuito."
+    message: hasAccess ? "Você atingiu o limite de colaboradores do seu plano." : "Colaboração não está disponível no plano gratuito."
   };
 }

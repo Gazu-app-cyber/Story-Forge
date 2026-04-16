@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, FolderOpen, Home, Menu, PenTool, Plus, Search, Settings, Star, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Compass, FolderOpen, Home, Menu, PenTool, Plus, Search, Settings, Star, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import "@/lib/theme";
 
 const navItems = [
   { path: "/", icon: Home, label: "Início" },
+  { path: "/discover", icon: Compass, label: "Descobrir" },
   { path: "/projects", icon: BookOpen, label: "Projetos" },
   { path: "/folders", icon: FolderOpen, label: "Pastas" },
   { path: "/favorites", icon: Star, label: "Favoritos" },
@@ -18,6 +19,7 @@ const navItems = [
 function getPageMeta(pathname) {
   if (pathname.startsWith("/project/")) return { title: "Projeto", backTo: "/projects" };
   if (pathname.startsWith("/folder/")) return { title: "Pasta", backTo: "/folders" };
+  if (pathname === "/discover") return { title: "Descobrir", backTo: "/" };
   if (pathname === "/settings") return { title: "Configurações", backTo: "/" };
   return null;
 }
@@ -162,7 +164,7 @@ export default function Layout() {
         </main>
 
         <nav className="mobile-bottom-safe sticky bottom-0 z-30 border-t border-border bg-background/95 px-2 pt-2 backdrop-blur lg:hidden" style={{ paddingBottom: "calc(0.75rem + var(--safe-bottom))" }}>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-6 gap-1">
             {navItems.map((item) => {
               const active = isActive(item.path);
               return (

@@ -8,6 +8,7 @@ import { isNativeApp } from "@/lib/mobile";
 import PageNotFound from "@/lib/PageNotFound";
 import { queryClientInstance } from "@/lib/query-client";
 import Dashboard from "@/pages/Dashboard";
+import Discover from "@/pages/Discover";
 import Favorites from "@/pages/Favorites";
 import Folders from "@/pages/Folders";
 import FolderView from "@/pages/FolderView";
@@ -42,6 +43,7 @@ function AuthenticatedApp() {
       <Route path="/manuscript/:id" element={<ManuscriptEditor />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/discover" element={<Discover />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/project/:id" element={<ProjectView />} />
         <Route path="/folders" element={<Folders />} />

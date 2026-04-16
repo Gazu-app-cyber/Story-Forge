@@ -255,7 +255,7 @@ export default function Dashboard() {
       </div>
 
       <section className="mb-12">
-        <SectionHeader icon={Sparkles} title="Descobrir autores" linkTo="/search" linkLabel="Explorar" />
+        <SectionHeader icon={Sparkles} title="Descobrir autores" linkTo="/discover" linkLabel="Explorar obras" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {socialFeed.featuredAuthors.map((author) => (
             <PublicAuthorCard key={author.id} author={author} onToggleFollow={handleToggleFollow} />
@@ -264,7 +264,7 @@ export default function Dashboard() {
       </section>
 
       <section className="mb-12">
-        <SectionHeader icon={Radio} title="Feed literário" linkTo={`/autor/${user?.username || "demo"}`} linkLabel="Meu perfil público" />
+        <SectionHeader icon={Radio} title="Feed literário" linkTo="/discover" linkLabel="Abrir descoberta" />
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
             {socialFeed.feedItems.map((item) => (

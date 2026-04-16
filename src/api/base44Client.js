@@ -50,6 +50,20 @@ function normalizeUserProfile(user = {}) {
   };
 }
 
+function normalizePublicProject(project = {}) {
+  return {
+    public_genre: "Geral",
+    public_tags: [],
+    public_origin: "original",
+    public_status: "Em andamento",
+    public_likes: 0,
+    public_comments: 0,
+    public_views: 0,
+    ...project,
+    public_tags: Array.isArray(project.public_tags) ? project.public_tags : []
+  };
+}
+
 function createAppError(message, extra = {}) {
   const error = new Error(message);
   Object.assign(error, extra);
@@ -73,7 +87,10 @@ function writeStorage(key, value) {
 
 function ensureSeedData() {
   const users = readStorage(STORAGE_KEYS.users, null);
-  if (users?.length) return;
+  if (users?.length) {
+    ensureDiscoverySeedData();
+    return;
+  }
 
   const createdDate = nowIso();
   const demoUser = {
@@ -154,6 +171,45 @@ function ensureSeedData() {
     updated_date: createdDate
   };
 
+  const publicAuthor = {
+    id: "user_author_public",
+    email: "autor@storyforge.app",
+    password: "storyforge",
+    full_name: "Lia Monteiro",
+    display_name: "Lia Monteiro",
+    username: "liamonteiro",
+    bio: "Autora de fantasia urbana e romances especulativos com foco em protagonistas brasileiras.",
+    profile_image: "",
+    profile_banner: "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=1600&q=80",
+    social_links: {
+      instagram: "https://instagram.com/",
+      twitter: "https://x.com/",
+      tiktok: "",
+      youtube: "",
+      website: "",
+      wattpad: "https://www.wattpad.com/"
+    },
+    public_profile: true,
+    follower_ids: [],
+    following_ids: [],
+    color_preset: "rose",
+    custom_primary: "",
+    font_family: "'Literata', serif",
+    font_size: 18,
+    plan: "premium",
+    project_view_mode: "grid",
+    theme_mode: "system",
+    dark_mode: false,
+    reduced_motion: false,
+    streakCount: 0,
+    lastStreakDate: "",
+    wordsWrittenToday: 0,
+    wordsTrackingDate: getBrazilDateKey(),
+    reminderSentDate: "",
+    created_date: createdDate,
+    updated_date: createdDate
+  };
+
   const demoFolder = {
     id: "folder_demo",
     name: "Universo principal",
@@ -171,6 +227,12 @@ function ensureSeedData() {
     is_public: true,
     public_summary: "Uma fantasia brasileira sobre ruínas antigas, memórias perigosas e personagens tentando sobreviver ao próprio passado.",
     public_status: "Em andamento",
+    public_genre: "Fantasia",
+    public_tags: ["magia", "ruínas", "jornada"],
+    public_origin: "original",
+    public_likes: 324,
+    public_comments: 41,
+    public_views: 4820,
     is_favorite: true,
     collaborators: [],
     created_by: demoUser.email,
@@ -197,10 +259,221 @@ function ensureSeedData() {
     updated_date: createdDate
   };
 
-  writeStorage(STORAGE_KEYS.users, [demoUser, collaboratorUser]);
+  const collaboratorProject = {
+    id: "project_writer_public",
+    name: "Entre Sinais e Silêncios",
+    description: "Drama contemporâneo com romance slow burn em uma cidade universitária.",
+    folder_id: "",
+    cover_image: "",
+    is_public: true,
+    public_summary: "Uma história sobre amizades tensionadas, luto e afeto surgindo no tempo errado.",
+    public_status: "Completa",
+    public_genre: "Drama",
+    public_tags: ["slow burn", "universidade", "luto"],
+    public_origin: "original",
+    public_likes: 207,
+    public_comments: 29,
+    public_views: 2910,
+    is_favorite: false,
+    collaborators: [],
+    created_by: collaboratorUser.email,
+    created_date: createdDate,
+    updated_date: createdDate
+  };
+
+  const publicAuthorProject = {
+    id: "project_author_public",
+    name: "Neon sob a Chuva",
+    description: "Fantasia urbana com investigação sobrenatural em Belo Horizonte.",
+    folder_id: "",
+    cover_image: "",
+    is_public: true,
+    public_summary: "Quando símbolos impossíveis começam a surgir pela cidade, uma ilustradora precisa desvendar quem está abrindo portais no centro histórico.",
+    public_status: "Em andamento",
+    public_genre: "Fantasia urbana",
+    public_tags: ["sobrenatural", "cidade", "investigação"],
+    public_origin: "original",
+    public_likes: 418,
+    public_comments: 67,
+    public_views: 6120,
+    is_favorite: false,
+    collaborators: [],
+    created_by: publicAuthor.email,
+    created_date: createdDate,
+    updated_date: createdDate
+  };
+
+  const collaboratorManuscript = {
+    id: "manuscript_writer_public",
+    name: "Capítulo 1",
+    project_id: collaboratorProject.id,
+    image: "",
+    type: "Capítulo",
+    content: "<h1>Capítulo 1</h1><p>Marina voltou para a cidade apenas para passar três dias. Bastaram quinze minutos para entender que nada ali tinha ficado realmente para trás.</p>",
+    layout: { margin: "normal", orientation: "portrait", pageSize: "A4", columns: 1 },
+    is_favorite: false,
+    created_by: collaboratorUser.email,
+    created_date: createdDate,
+    updated_date: createdDate
+  };
+
+  const publicAuthorManuscript = {
+    id: "manuscript_author_public",
+    name: "Capítulo 1",
+    project_id: publicAuthorProject.id,
+    image: "",
+    type: "Capítulo",
+    content: "<h1>Capítulo 1</h1><p>Na noite em que a cidade ganhou um segundo céu, Elisa jurou que nunca mais pisaria no viaduto da Lagoinha. Três dias depois, ela estava de volta.</p>",
+    layout: { margin: "normal", orientation: "portrait", pageSize: "A4", columns: 1 },
+    is_favorite: false,
+    created_by: publicAuthor.email,
+    created_date: createdDate,
+    updated_date: createdDate
+  };
+
+  writeStorage(STORAGE_KEYS.users, [demoUser, collaboratorUser, publicAuthor]);
   writeStorage(STORAGE_KEYS.Folder, [demoFolder]);
-  writeStorage(STORAGE_KEYS.Project, [demoProject]);
-  writeStorage(STORAGE_KEYS.Manuscript, [demoManuscript]);
+  writeStorage(STORAGE_KEYS.Project, [demoProject, collaboratorProject, publicAuthorProject]);
+  writeStorage(STORAGE_KEYS.Manuscript, [demoManuscript, collaboratorManuscript, publicAuthorManuscript]);
+}
+
+function ensureDiscoverySeedData() {
+  const users = readStorage(STORAGE_KEYS.users, []);
+  const projects = readStorage(STORAGE_KEYS.Project, []);
+  const manuscripts = readStorage(STORAGE_KEYS.Manuscript, []);
+  let changed = false;
+
+  const requiredUser = users.find((entry) => entry.id === "user_author_public");
+  if (!requiredUser) {
+    users.push(
+      normalizeUserProfile({
+        id: "user_author_public",
+        email: "autor@storyforge.app",
+        password: "storyforge",
+        full_name: "Lia Monteiro",
+        display_name: "Lia Monteiro",
+        username: "liamonteiro",
+        bio: "Autora de fantasia urbana e romances especulativos com foco em protagonistas brasileiras.",
+        profile_image: "",
+        profile_banner: "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=1600&q=80",
+        social_links: {
+          instagram: "https://instagram.com/",
+          twitter: "https://x.com/",
+          tiktok: "",
+          youtube: "",
+          website: "",
+          wattpad: "https://www.wattpad.com/"
+        },
+        public_profile: true,
+        follower_ids: [],
+        following_ids: [],
+        plan: "premium",
+        created_date: nowIso(),
+        updated_date: nowIso()
+      })
+    );
+    changed = true;
+  }
+
+  const projectSeeds = [
+    {
+      id: "project_writer_public",
+      name: "Entre Sinais e Silêncios",
+      description: "Drama contemporâneo com romance slow burn em uma cidade universitária.",
+      public_summary: "Uma história sobre amizades tensionadas, luto e afeto surgindo no tempo errado.",
+      public_status: "Completa",
+      public_genre: "Drama",
+      public_tags: ["slow burn", "universidade", "luto"],
+      public_origin: "original",
+      public_likes: 207,
+      public_comments: 29,
+      public_views: 2910,
+      created_by: "writer@storyforge.app"
+    },
+    {
+      id: "project_author_public",
+      name: "Neon sob a Chuva",
+      description: "Fantasia urbana com investigação sobrenatural em Belo Horizonte.",
+      public_summary: "Quando símbolos impossíveis começam a surgir pela cidade, uma ilustradora precisa desvendar quem está abrindo portais no centro histórico.",
+      public_status: "Em andamento",
+      public_genre: "Fantasia urbana",
+      public_tags: ["sobrenatural", "cidade", "investigação"],
+      public_origin: "original",
+      public_likes: 418,
+      public_comments: 67,
+      public_views: 6120,
+      created_by: "autor@storyforge.app"
+    }
+  ];
+
+  for (const seed of projectSeeds) {
+    const existing = projects.find((entry) => entry.id === seed.id);
+    if (!existing) {
+      projects.push(
+        normalizePublicProject({
+          id: seed.id,
+          name: seed.name,
+          description: seed.description,
+          folder_id: "",
+          cover_image: "",
+          is_public: true,
+          is_favorite: false,
+          collaborators: [],
+          created_by: seed.created_by,
+          created_date: nowIso(),
+          updated_date: nowIso(),
+          ...seed
+        })
+      );
+      changed = true;
+      continue;
+    }
+    const normalized = normalizePublicProject(existing);
+    if (JSON.stringify(existing) !== JSON.stringify(normalized)) {
+      Object.assign(existing, normalized);
+      changed = true;
+    }
+  }
+
+  if (!manuscripts.find((entry) => entry.id === "manuscript_writer_public")) {
+    manuscripts.push({
+      id: "manuscript_writer_public",
+      name: "Capítulo 1",
+      project_id: "project_writer_public",
+      image: "",
+      type: "Capítulo",
+      content: "<h1>Capítulo 1</h1><p>Marina voltou para a cidade apenas para passar três dias. Bastaram quinze minutos para entender que nada ali tinha ficado realmente para trás.</p>",
+      layout: { margin: "normal", orientation: "portrait", pageSize: "A4", columns: 1 },
+      is_favorite: false,
+      created_by: "writer@storyforge.app",
+      created_date: nowIso(),
+      updated_date: nowIso()
+    });
+    changed = true;
+  }
+
+  if (!manuscripts.find((entry) => entry.id === "manuscript_author_public")) {
+    manuscripts.push({
+      id: "manuscript_author_public",
+      name: "Capítulo 1",
+      project_id: "project_author_public",
+      image: "",
+      type: "Capítulo",
+      content: "<h1>Capítulo 1</h1><p>Na noite em que a cidade ganhou um segundo céu, Elisa jurou que nunca mais pisaria no viaduto da Lagoinha. Três dias depois, ela estava de volta.</p>",
+      layout: { margin: "normal", orientation: "portrait", pageSize: "A4", columns: 1 },
+      is_favorite: false,
+      created_by: "autor@storyforge.app",
+      created_date: nowIso(),
+      updated_date: nowIso()
+    });
+    changed = true;
+  }
+
+  if (changed) {
+    saveUsers(users);
+    saveCollection("Project", projects);
+    saveCollection("Manuscript", manuscripts);
+  }
 }
 
 function getUsers() {
@@ -321,12 +594,12 @@ function createEntityApi(entityName) {
   return {
     async list(order = "-updated_date", limit = 100) {
       const user = requireCurrentUser();
-      const records = withUserScope(getCollection(entityName), user.email);
+      const records = withUserScope(getCollection(entityName), user.email).map((record) => (entityName === "Project" ? normalizePublicProject(record) : record));
       return clone(sortRecords(records, order).slice(0, limit));
     },
     async filter(criteria = {}, order = "-updated_date", limit = 100) {
       const user = requireCurrentUser();
-      const records = withUserScope(getCollection(entityName), user.email);
+      const records = withUserScope(getCollection(entityName), user.email).map((record) => (entityName === "Project" ? normalizePublicProject(record) : record));
       return clone(sortRecords(filterRecords(records, criteria), order).slice(0, limit));
     },
     async create(data) {
@@ -344,9 +617,9 @@ function createEntityApi(entityName) {
         created_date: timestamp,
         updated_date: timestamp
       };
-      records.push(nextRecord);
+      records.push(entityName === "Project" ? normalizePublicProject(nextRecord) : nextRecord);
       saveCollection(entityName, records);
-      return clone(nextRecord);
+      return clone(entityName === "Project" ? normalizePublicProject(nextRecord) : nextRecord);
     },
     async update(id, patch) {
       const user = requireCurrentUser();
@@ -360,6 +633,9 @@ function createEntityApi(entityName) {
         ...patch,
         updated_date: nowIso()
       };
+      if (entityName === "Project") {
+        records[index] = normalizePublicProject(records[index]);
+      }
       saveCollection(entityName, records);
       return clone(records[index]);
     },
@@ -507,6 +783,7 @@ export const base44 = {
         .map((entry) => sanitizeUser(entry))
         .filter((entry) => entry.public_profile);
       const publicProjects = getCollection("Project")
+        .map((project) => normalizePublicProject(project))
         .filter((project) => project.is_public)
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
 
@@ -547,6 +824,25 @@ export const base44 = {
         feedItems
       };
     },
+    async listDiscoverWorks() {
+      const publicUsers = getUsers().map((entry) => sanitizeUser(entry));
+      const publicProjects = getCollection("Project")
+        .map((project) => normalizePublicProject(project))
+        .filter((project) => project.is_public)
+        .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
+
+      return publicProjects.map((project) => {
+        const author = publicUsers.find((user) => user.email === project.created_by);
+        return {
+          ...clone(project),
+          author_name: author?.display_name || author?.full_name || "Autor",
+          author_username: author?.username || "",
+          author_avatar: author?.profile_image || "",
+          author_bio: author?.bio || "",
+          manuscript_count: getCollection("Manuscript").filter((item) => item.project_id === project.id).length
+        };
+      });
+    },
     async getPublicAuthorByUsername(username) {
       const publicUsers = getUsers().map((entry) => sanitizeUser(entry));
       const author = publicUsers.find((entry) => entry.public_profile && entry.username === username);
@@ -555,6 +851,7 @@ export const base44 = {
       }
 
       const publicProjects = getCollection("Project")
+        .map((project) => normalizePublicProject(project))
         .filter((project) => project.created_by === author.email && project.is_public)
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date))
         .map((project) => ({

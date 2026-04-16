@@ -350,10 +350,10 @@ export default function Settings() {
                 <p className="font-semibold text-foreground">{PLAN_DEFINITIONS[option].label}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {option === "free"
-                    ? "5 projetos, 20.000 palavras por manuscrito e sem colaboracao."
+                    ? "10 projetos, 20.000 palavras por manuscrito e sem colaboração."
                     : option === "premium"
-                      ? "Exportacao, estatisticas e ate 5 colaboradores por projeto."
-                      : "Colaboracao ilimitada, templates e modo livro."}
+                      ? "Exportação, estatísticas e até 5 colaboradores por projeto."
+                      : "Colaboração ilimitada, templates e modo livro."}
                 </p>
                 <div className="mt-4">
                   <Button type="button" size="sm" variant={active ? "default" : "outline"}>

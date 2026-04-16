@@ -398,3 +398,14 @@
   background:
     linear-gradient(180deg, hsl(var(--card)), hsl(var(--card)));
 }
+
+.discover-shell {
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 28%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.22) 80%, hsl(var(--background)));
+}
+
+.discover-card {
+  background:
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card)));
+}

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 
 export default function CreateManuscriptDialog({ open, onOpenChange, projectId, editManuscript, onSuccess }) {
   const [name, setName] = useState("");
-  const [type, setType] = useState("CapÃ­tulo");
+  const [type, setType] = useState("Capítulo");
   const [image, setImage] = useState("");
   const [templateId, setTemplateId] = useState("blank");
   const [user, setUser] = useState(null);
@@ -23,7 +23,7 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
 
   useEffect(() => {
     setName(editManuscript?.name || "");
-    setType(editManuscript?.type || "CapÃ­tulo");
+    setType(editManuscript?.type || "Capítulo");
     setImage(editManuscript?.image || "");
     setTemplateId("blank");
   }, [editManuscript, open]);
@@ -81,7 +81,7 @@ export default function CreateManuscriptDialog({ open, onOpenChange, projectId, 
       onSuccess?.();
     } catch (error) {
       console.error("Failed to save manuscript", error);
-      toast.error(error?.message || "NÃ£o foi possÃ­vel salvar o manuscrito.");
+      toast.error(error?.message || "Não foi possível salvar o manuscrito.");
     } finally {
       setLoading(false);
     }

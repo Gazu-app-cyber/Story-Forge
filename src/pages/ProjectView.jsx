@@ -6,7 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import CreateManuscriptDialog from "@/components/CreateManuscriptDialog";
+import CreateManuscriptDialog from "@/components/CreateManuscriptDialogEnhanced";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ManuscriptCard from "@/components/ManuscriptCard";
 import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
