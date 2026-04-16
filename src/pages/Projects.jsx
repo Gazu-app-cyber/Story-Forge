@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Grid2X2, LayoutList, Loader2, Plus, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
@@ -20,10 +20,10 @@ const sortOptions = [
 const projectSortOptions = [
   { value: "name_asc", label: "Nome (A - Z)" },
   { value: "name_desc", label: "Nome (Z - A)" },
-  { value: "created_desc", label: "Criacao (mais recente)" },
-  { value: "created_asc", label: "Criacao (mais antiga)" },
-  { value: "updated_desc", label: "Modificacao (recente)" },
-  { value: "updated_asc", label: "Modificacao (antiga)" }
+  { value: "created_desc", label: "Criação (mais recente)" },
+  { value: "created_asc", label: "Criação (mais antiga)" },
+  { value: "updated_desc", label: "Modificação (recente)" },
+  { value: "updated_asc", label: "Modificação (antiga)" }
 ];
 
 export default function Projects() {
@@ -175,7 +175,7 @@ export default function Projects() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span className="rounded-full border border-border bg-card px-3 py-1.5">{viewMode === "grid" ? "Visualizacao em grade" : "Visualizacao em lista"}</span>
+        <span className="rounded-full border border-border bg-card px-3 py-1.5">{viewMode === "grid" ? "Visualização em grade" : "Visualização em lista"}</span>
         <span className="rounded-full border border-border bg-card px-3 py-1.5">{projectSortOptions.find((option) => option.value === sortBy)?.label}</span>
         {search ? <span className="rounded-full border border-border bg-card px-3 py-1.5">Busca: {search}</span> : null}
       </div>
@@ -183,7 +183,7 @@ export default function Projects() {
       {!projectLimitStatus.allowed ? (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>Voce atingiu o limite do plano gratuito. Faca upgrade para continuar.</span>
+            <span>Você atingiu o limite do plano gratuito. Faça upgrade para continuar.</span>
             <Button
               type="button"
               size="sm"

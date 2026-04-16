@@ -1,4 +1,4 @@
-import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
+﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
 const STORAGE_KEYS = {
   users: "storyforge_users",
@@ -18,6 +18,36 @@ function createId(prefix) {
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function createDefaultSocialLinks() {
+  return {
+    instagram: "",
+    twitter: "",
+    tiktok: "",
+    youtube: "",
+    website: "",
+    wattpad: ""
+  };
+}
+
+function normalizeSocialLinks(links = {}) {
+  return {
+    ...createDefaultSocialLinks(),
+    ...links
+  };
+}
+
+function normalizeUserProfile(user = {}) {
+  return {
+    profile_banner: "",
+    social_links: createDefaultSocialLinks(),
+    public_profile: true,
+    follower_ids: [],
+    following_ids: [],
+    ...user,
+    social_links: normalizeSocialLinks(user.social_links)
+  };
 }
 
 function createAppError(message, extra = {}) {
@@ -53,8 +83,20 @@ function ensureSeedData() {
     full_name: "Demo StoryForge",
     display_name: "Demo StoryForge",
     username: "demo",
-    bio: "Conta de exemplo local do StoryForge.",
+    bio: "Escritora de fantasia brasileira, obcecada por mapas, personagens intensos e jornadas de redenção.",
     profile_image: "",
+    profile_banner: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1600&q=80",
+    social_links: {
+      instagram: "https://instagram.com/storyforge.app",
+      twitter: "",
+      tiktok: "",
+      youtube: "https://youtube.com/@storyforge",
+      website: "https://story-forge-gazu.vercel.app",
+      wattpad: "https://www.wattpad.com/"
+    },
+    public_profile: true,
+    follower_ids: [],
+    following_ids: [],
     color_preset: "indigo",
     custom_primary: "",
     font_family: "'Crimson Pro', serif",
@@ -80,8 +122,20 @@ function ensureSeedData() {
     full_name: "Colaborador StoryForge",
     display_name: "Colaborador",
     username: "writer",
-    bio: "Conta secundaria para testes de colaboracao local.",
+    bio: "Perfil secundário para testes de colaboração local e descoberta de autores.",
     profile_image: "",
+    profile_banner: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1600&q=80",
+    social_links: {
+      instagram: "",
+      twitter: "https://x.com/",
+      tiktok: "",
+      youtube: "",
+      website: "",
+      wattpad: "https://www.wattpad.com/"
+    },
+    public_profile: true,
+    follower_ids: [demoUser.id],
+    following_ids: [],
     color_preset: "sky",
     custom_primary: "",
     font_family: "'Inter', sans-serif",
@@ -110,10 +164,13 @@ function ensureSeedData() {
 
   const demoProject = {
     id: "project_demo",
-    name: "As cronicas do Vale",
-    description: "Projeto de exemplo para mostrar a estrutura do StoryForge sem depender de servicos externos.",
+    name: "As crônicas do Vale",
+    description: "Projeto de exemplo para mostrar a estrutura do StoryForge sem depender de serviços externos.",
     folder_id: demoFolder.id,
     cover_image: "",
+    is_public: true,
+    public_summary: "Uma fantasia brasileira sobre ruínas antigas, memórias perigosas e personagens tentando sobreviver ao próprio passado.",
+    public_status: "Em andamento",
     is_favorite: true,
     collaborators: [],
     created_by: demoUser.email,
@@ -123,11 +180,11 @@ function ensureSeedData() {
 
   const demoManuscript = {
     id: "manuscript_demo",
-    name: "Capitulo 1",
+    name: "Capítulo 1",
     project_id: demoProject.id,
     image: "",
     type: "Capítulo",
-    content: "<h1>Capitulo 1</h1><p>Era uma vez um escritor tentando libertar seu app de um backend externo.</p>",
+    content: "<h1>Capítulo 1</h1><p>Era uma vez uma escritora tentando transformar seu app em uma casa para autores brasileiros.</p>",
     layout: {
       margin: "normal",
       orientation: "portrait",
@@ -172,11 +229,16 @@ function clearSession() {
 function sanitizeUser(user) {
   if (!user) return null;
   const { password, ...safeUser } = user;
-  return clone({ ...safeUser, ...normalizeStreakUser(safeUser) });
+  return clone({ ...normalizeUserProfile(safeUser), ...normalizeStreakUser(safeUser) });
 }
 
 function hydrateUserRecord(user) {
-  return { ...normalizeStreakUser(user), ...user };
+  return {
+    ...normalizeUserProfile(user),
+    ...normalizeStreakUser(user),
+    ...user,
+    social_links: normalizeSocialLinks(user.social_links)
+  };
 }
 
 function updateStoredUser(userId, updater) {
@@ -190,6 +252,7 @@ function updateStoredUser(userId, updater) {
   users[index] = {
     ...current,
     ...patch,
+    social_links: normalizeSocialLinks((patch.social_links || current.social_links) ?? {}),
     updated_date: nowIso()
   };
   saveUsers(users);
@@ -274,6 +337,9 @@ function createEntityApi(entityName) {
         id: createId(prefix),
         ...data,
         collaborators: entityName === "Project" ? data.collaborators || [] : data.collaborators,
+        is_public: entityName === "Project" ? Boolean(data.is_public) : data.is_public,
+        public_summary: entityName === "Project" ? data.public_summary || data.description || "" : data.public_summary,
+        public_status: entityName === "Project" ? data.public_status || "Em andamento" : data.public_status,
         created_by: user.email,
         created_date: timestamp,
         updated_date: timestamp
@@ -314,7 +380,7 @@ function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(createAppError("Nao foi possivel ler o arquivo."));
+    reader.onerror = () => reject(createAppError("Não foi possível ler o arquivo."));
     reader.readAsDataURL(file);
   });
 }
@@ -330,7 +396,7 @@ export const base44 = {
       const normalizedEmail = email.trim().toLowerCase();
       const user = getUsers().find((entry) => entry.email.toLowerCase() === normalizedEmail && entry.password === password);
       if (!user) {
-        throw createAppError("Email ou senha invalidos.", { status: 401, type: "auth_required" });
+        throw createAppError("Email ou senha inválidos.", { status: 401, type: "auth_required" });
       }
       setSession(user.id);
       return sanitizeUser(syncCurrentUserRecord());
@@ -338,11 +404,11 @@ export const base44 = {
     async register({ email, password, display_name }) {
       const normalizedEmail = email.trim().toLowerCase();
       if (!normalizedEmail || !password) {
-        throw createAppError("Email e senha sao obrigatorios.", { status: 400 });
+        throw createAppError("Email e senha são obrigatórios.", { status: 400 });
       }
       const users = getUsers();
       if (users.some((user) => user.email.toLowerCase() === normalizedEmail)) {
-        throw createAppError("Ja existe uma conta com esse email.", { status: 409 });
+        throw createAppError("Já existe uma conta com esse email.", { status: 409 });
       }
       const timestamp = nowIso();
       const nextUser = {
@@ -354,6 +420,11 @@ export const base44 = {
         username: normalizedEmail.split("@")[0],
         bio: "",
         profile_image: "",
+        profile_banner: "",
+        social_links: createDefaultSocialLinks(),
+        public_profile: true,
+        follower_ids: [],
+        following_ids: [],
         color_preset: "indigo",
         custom_primary: "",
         font_family: "'Crimson Pro', serif",
@@ -428,6 +499,103 @@ export const base44 = {
     Folder: createEntityApi("Folder"),
     Project: createEntityApi("Project"),
     Manuscript: createEntityApi("Manuscript")
+  },
+  social: {
+    async listFeed() {
+      const currentUser = getCurrentUserRecord();
+      const publicUsers = getUsers()
+        .map((entry) => sanitizeUser(entry))
+        .filter((entry) => entry.public_profile);
+      const publicProjects = getCollection("Project")
+        .filter((project) => project.is_public)
+        .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
+
+      const featuredAuthors = publicUsers
+        .map((author) => ({
+          ...author,
+          followers_count: (author.follower_ids || []).length,
+          following_count: (author.following_ids || []).length,
+          projects_count: publicProjects.filter((project) => project.created_by === author.email).length,
+          is_following: currentUser ? (currentUser.following_ids || []).includes(author.id) : false
+        }))
+        .sort((left, right) => right.followers_count - left.followers_count || left.display_name.localeCompare(right.display_name, "pt-BR"))
+        .slice(0, 6);
+
+      const featuredWorks = publicProjects.slice(0, 8).map((project) => {
+        const author = publicUsers.find((user) => user.email === project.created_by);
+        return {
+          ...clone(project),
+          author_name: author?.display_name || author?.full_name || "Autor",
+          author_username: author?.username || "",
+          author_avatar: author?.profile_image || "",
+          manuscript_count: getCollection("Manuscript").filter((item) => item.project_id === project.id).length
+        };
+      });
+
+      const feedItems = featuredWorks.slice(0, 5).map((work) => ({
+        id: `feed_${work.id}`,
+        type: "work_spotlight",
+        created_date: work.updated_date,
+        title: `Vitrine de ${work.author_name}`,
+        body: work.public_summary || work.description || "Uma obra em destaque para a comunidade.",
+        work
+      }));
+
+      return {
+        featuredAuthors,
+        featuredWorks,
+        feedItems
+      };
+    },
+    async getPublicAuthorByUsername(username) {
+      const publicUsers = getUsers().map((entry) => sanitizeUser(entry));
+      const author = publicUsers.find((entry) => entry.public_profile && entry.username === username);
+      if (!author) {
+        throw createAppError("Autor não encontrado", { status: 404 });
+      }
+
+      const publicProjects = getCollection("Project")
+        .filter((project) => project.created_by === author.email && project.is_public)
+        .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date))
+        .map((project) => ({
+          ...clone(project),
+          manuscript_count: getCollection("Manuscript").filter((item) => item.project_id === project.id).length
+        }));
+
+      const currentUser = getCurrentUserRecord();
+      return {
+        author: {
+          ...author,
+          followers_count: (author.follower_ids || []).length,
+          following_count: (author.following_ids || []).length,
+          is_following: currentUser ? (currentUser.following_ids || []).includes(author.id) : false
+        },
+        works: publicProjects
+      };
+    },
+    async toggleFollow(authorId) {
+      const currentUser = requireCurrentUser();
+      if (currentUser.id === authorId) {
+        throw createAppError("Você não pode seguir o próprio perfil.", { status: 400 });
+      }
+
+      const currentRecord = updateStoredUser(currentUser.id, (record) => {
+        const following = new Set(record.following_ids || []);
+        if (following.has(authorId)) following.delete(authorId);
+        else following.add(authorId);
+        return { following_ids: [...following] };
+      });
+
+      const isFollowing = (currentRecord.following_ids || []).includes(authorId);
+      updateStoredUser(authorId, (record) => {
+        const followers = new Set(record.follower_ids || []);
+        if (isFollowing) followers.add(currentUser.id);
+        else followers.delete(currentUser.id);
+        return { follower_ids: [...followers] };
+      });
+
+      return sanitizeUser(currentRecord);
+    }
   },
   integrations: {
     Core: {

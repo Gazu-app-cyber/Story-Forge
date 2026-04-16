@@ -14,6 +14,7 @@ import FolderView from "@/pages/FolderView";
 import ManuscriptEditor from "@/pages/ManuscriptEditor";
 import ProjectView from "@/pages/ProjectView";
 import Projects from "@/pages/Projects";
+import PublicAuthorProfile from "@/pages/PublicAuthorProfile";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
@@ -47,6 +48,7 @@ function AuthenticatedApp() {
         <Route path="/folder/:id" element={<FolderView />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/autor/:username" element={<PublicAuthorProfile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>

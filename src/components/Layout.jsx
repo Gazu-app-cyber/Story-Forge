@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, FolderOpen, Home, Menu, PenTool, Plus, Search, Settings, Star, X } from "lucide-react";

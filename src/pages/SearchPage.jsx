@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { BookOpen, FileText, Loader2, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";

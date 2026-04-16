@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { ImagePlus, Loader2, LogOut, Moon, Palette, Save, Smartphone, Trash2, Type, User } from "lucide-react";
+﻿import { useEffect, useState } from "react";
+import { Globe, ImagePlus, Instagram, Loader2, LogOut, Moon, Palette, Save, Smartphone, Trash2, Type, User, Youtube } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
@@ -43,6 +44,15 @@ const colorDotMap = {
   sky: "bg-sky-500"
 };
 
+const socialFields = [
+  { key: "instagram", label: "Instagram", icon: Instagram, placeholder: "https://instagram.com/seu_perfil" },
+  { key: "twitter", label: "X / Twitter", icon: Globe, placeholder: "https://x.com/seu_perfil" },
+  { key: "tiktok", label: "TikTok", icon: Globe, placeholder: "https://tiktok.com/@seu_perfil" },
+  { key: "youtube", label: "YouTube", icon: Youtube, placeholder: "https://youtube.com/@seu_canal" },
+  { key: "website", label: "Site pessoal", icon: Globe, placeholder: "https://seusite.com" },
+  { key: "wattpad", label: "Wattpad", icon: Globe, placeholder: "https://www.wattpad.com/user/seuperfil" }
+];
+
 export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +64,16 @@ export default function Settings() {
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [profileBanner, setProfileBanner] = useState("");
+  const [publicProfile, setPublicProfile] = useState(true);
+  const [socialLinks, setSocialLinks] = useState({
+    instagram: "",
+    twitter: "",
+    tiktok: "",
+    youtube: "",
+    website: "",
+    wattpad: ""
+  });
   const [themeMode, setThemeMode] = useState("system");
   const [plan, setPlan] = useState("free");
   const [colorPreset, setColorPreset] = useState("indigo");
@@ -72,6 +92,16 @@ export default function Settings() {
         setUsername(currentUser.username || "");
         setBio(currentUser.bio || "");
         setProfileImage(currentUser.profile_image || "");
+        setProfileBanner(currentUser.profile_banner || "");
+        setPublicProfile(currentUser.public_profile !== false);
+        setSocialLinks({
+          instagram: currentUser.social_links?.instagram || "",
+          twitter: currentUser.social_links?.twitter || "",
+          tiktok: currentUser.social_links?.tiktok || "",
+          youtube: currentUser.social_links?.youtube || "",
+          website: currentUser.social_links?.website || "",
+          wattpad: currentUser.social_links?.wattpad || ""
+        });
 
         const stored = getTheme();
         setThemeMode(stored.theme_mode || (stored.dark_mode ? "dark" : "system"));
@@ -118,14 +148,19 @@ export default function Settings() {
       document.body.style.fontFamily = fontFamily;
       document.body.style.fontSize = `${fontSize}px`;
 
-      await base44.auth.updateMe({
+      const updatedUser = await base44.auth.updateMe({
         display_name: displayName.trim(),
         username: username.trim(),
         bio: bio.trim(),
         profile_image: profileImage,
+        profile_banner: profileBanner,
+        public_profile: publicProfile,
+        social_links: socialLinks,
         plan,
         ...themeData
       });
+      setUser(updatedUser);
+
 
       toast.success("Configurações salvas!");
     } finally {
@@ -140,6 +175,18 @@ export default function Settings() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setProfileImage(file_url);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleBannerUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setProfileBanner(file_url);
     } finally {
       setUploading(false);
     }
@@ -176,6 +223,23 @@ export default function Settings() {
           Perfil
         </h2>
         <div className="space-y-5">
+          <div className="overflow-hidden rounded-[1.75rem] border border-border bg-card">
+            <div className="social-banner h-36" style={{ backgroundImage: profileBanner ? `url(${profileBanner})` : undefined }} />
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+              <div className="text-sm text-muted-foreground">Banner do perfil público</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-block cursor-pointer">
+                  <Button variant="outline" size="sm" className="pointer-events-none gap-2">
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                    {profileBanner ? "Trocar banner" : "Adicionar banner"}
+                  </Button>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+                </label>
+                {profileBanner ? <Button variant="ghost" size="sm" onClick={() => setProfileBanner("")}>Remover banner</Button> : null}
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-4">
             {profileImage ? (
               <img src={profileImage} alt="" className="h-20 w-20 rounded-full border border-border object-cover" />
@@ -219,6 +283,41 @@ export default function Settings() {
           <div>
             <Label>Biografia</Label>
             <Textarea value={bio} onChange={(event) => setBio(event.target.value)} className="mt-1.5" rows={3} placeholder="Conte um pouco sobre você..." />
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">Perfil público do autor</p>
+                <p className="text-sm text-muted-foreground">Ative para aparecer na camada social e compartilhar sua vitrine.</p>
+              </div>
+              <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
+            </div>
+            <div className="mt-4">
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/autor/${username || user?.username || "demo"}`}>Ver perfil público</Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="mb-4 text-sm font-medium text-foreground">Redes e links</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {socialFields.map(({ key, label, icon: Icon, placeholder }) => (
+                <div key={key}>
+                  <Label className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    {label}
+                  </Label>
+                  <Input
+                    value={socialLinks[key]}
+                    onChange={(event) => setSocialLinks((current) => ({ ...current, [key]: event.target.value }))}
+                    className="mt-1.5"
+                    placeholder={placeholder}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -337,7 +436,7 @@ export default function Settings() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium">Cor personalizada</p>
-              <p className="text-sm text-muted-foreground">Use a roda de cores para um ajuste fino sem perder as opÃ§Ãµes rÃ¡pidas acima.</p>
+              <p className="text-sm text-muted-foreground">Use a roda de cores para um ajuste fino sem perder as opções rápidas acima.</p>
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
               <input
@@ -359,7 +458,7 @@ export default function Settings() {
           </div>
           {customPrimary ? (
             <div className="mt-3 flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-muted-foreground">A cor personalizada estÃ¡ sendo usada como cor principal do app.</span>
+              <span className="text-muted-foreground">A cor personalizada está sendo usada como cor principal do app.</span>
               <Button
                 type="button"
                 variant="ghost"

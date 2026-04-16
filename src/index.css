@@ -378,3 +378,23 @@
 .book-page-body {
   font-family: "Source Serif 4", serif;
 }
+
+.social-hero {
+  background:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.16), transparent 34%),
+    radial-gradient(circle at top right, hsl(var(--accent) / 0.14), transparent 28%),
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--background)));
+}
+
+.social-banner {
+  background:
+    linear-gradient(135deg, hsl(var(--primary) / 0.32), hsl(var(--accent) / 0.2)),
+    linear-gradient(180deg, hsl(var(--muted)), hsl(var(--card)));
+  background-size: cover;
+  background-position: center;
+}
+
+.social-card {
+  background:
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card)));
+}

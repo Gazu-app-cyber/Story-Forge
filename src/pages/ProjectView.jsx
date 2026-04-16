@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import moment from "moment";
 import "moment/locale/pt-br";
 import { BookOpen, Crown, LayoutGrid, List, Loader2, Pencil, Plus, Search, Star, Users } from "lucide-react";
@@ -121,6 +121,11 @@ export default function ProjectView() {
     loadData();
   }
 
+  async function handleTogglePublicProject() {
+    await base44.entities.Project.update(id, { is_public: !project.is_public });
+    loadData();
+  }
+
   async function handleInviteCollaborator() {
     if (!inviteEmail.trim()) return;
     if (!collaborationStatus.hasAccess) {
@@ -128,7 +133,7 @@ export default function ProjectView() {
       return;
     }
     if (!collaborationStatus.allowed) {
-      toast.error("VocÃª atingiu o limite de colaboradores do seu plano");
+      toast.error("Você atingiu o limite de colaboradores do seu plano");
       return;
     }
 
@@ -136,15 +141,15 @@ export default function ProjectView() {
     try {
       const invitedUser = await base44.auth.findByEmail(inviteEmail);
       if (!invitedUser) {
-        toast.error("Usuario nao encontrado.");
+        toast.error("Usuário não encontrado.");
         return;
       }
       if (invitedUser.email === user?.email) {
-        toast.error("Voce ja e o dono deste projeto.");
+        toast.error("Você já é o dono deste projeto.");
         return;
       }
       if ((project.collaborators || []).includes(invitedUser.id)) {
-        toast.error("Este usuario ja foi adicionado.");
+        toast.error("Este usuário já foi adicionado.");
         return;
       }
 
@@ -156,7 +161,7 @@ export default function ProjectView() {
       loadData();
     } catch (error) {
       console.error("Failed to invite collaborator", error);
-      toast.error(error?.message || "Nao foi possivel adicionar o colaborador.");
+      toast.error(error?.message || "Não foi possível adicionar o colaborador.");
     } finally {
       setInviteLoading(false);
     }
@@ -205,6 +210,9 @@ export default function ProjectView() {
                 <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-border transition-colors hover:bg-muted" onClick={handleToggleProjectFav}>
                   <Star className={cn("h-4 w-4", project.is_favorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
                 </button>
+                <button className={cn("flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors", project.is_public ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-border text-muted-foreground hover:bg-muted")} onClick={handleTogglePublicProject}>
+                  {project.is_public ? "Público" : "Privado"}
+                </button>
                 <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-border transition-colors hover:bg-muted" onClick={() => setShowEditProject(true)}>
                   <Pencil className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -212,6 +220,17 @@ export default function ProjectView() {
             </div>
 
             {project.description ? <p className="mb-4 max-w-lg text-[15px] leading-relaxed text-muted-foreground">{project.description}</p> : null}
+
+            <div className="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className={cn("rounded-full px-3 py-1.5", project.is_public ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground")}>
+                {project.is_public ? "Obra pública na vitrine" : "Obra privada"}
+              </span>
+              {project.is_public && user?.username ? (
+                <Link to={`/autor/${user.username}`} className="rounded-full border border-border bg-card px-3 py-1.5 hover:border-primary/30 hover:text-primary">
+                  Ver no perfil público
+                </Link>
+              ) : null}
+            </div>
 
             <div className="flex flex-wrap gap-3 text-[13px] text-muted-foreground">
               <span className="flex items-center gap-1.5">
@@ -230,13 +249,13 @@ export default function ProjectView() {
             <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Colaboracao</p>
+                  <p className="text-sm font-semibold text-foreground">Colaboração</p>
                   <p className="text-sm text-muted-foreground">
                     {collaborationStatus.limit === Infinity
                       ? "Convide colaboradores ilimitados para este projeto."
                       : collaborationStatus.hasAccess
-                        ? `Convide atÃ© ${collaborationStatus.limit} colaboradores para este projeto.`
-                        : "FaÃ§a upgrade para liberar colaboraÃ§Ã£o neste projeto."}
+                        ? `Convide até ${collaborationStatus.limit} colaboradores para este projeto.`
+                        : "Faça upgrade para liberar colaboração neste projeto."}
                   </p>
                 </div>
                 <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", collaborationStatus.hasAccess ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800")}>
@@ -263,7 +282,7 @@ export default function ProjectView() {
                   {collaborationStatus.hasAccess ? "Convidar" : "Fazer upgrade"}
                 </Button>
               </div>
-              {collaborationStatus.hasAccess && !collaborationStatus.allowed ? <p className="mt-2 text-xs font-medium text-amber-700">VocÃª atingiu o limite de colaboradores do seu plano.</p> : null}
+              {collaborationStatus.hasAccess && !collaborationStatus.allowed ? <p className="mt-2 text-xs font-medium text-amber-700">Você atingiu o limite de colaboradores do seu plano.</p> : null}
               {(project.collaborators || []).length ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(project.collaborators || []).map((collaboratorId) => (

@@ -1,4 +1,4 @@
-export const COLOR_PRESETS = {
+﻿export const COLOR_PRESETS = {
   indigo: {
     label: "Índigo",
     light: { primary: "250 40% 45%", ring: "250 40% 45%" },

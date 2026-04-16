@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Loader2, Medal, Plus, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Heart, Loader2, Medal, Plus, Radio, Sparkles, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ProjectCard from "@/components/ProjectCard";
@@ -24,9 +24,97 @@ function SectionHeader({ icon: Icon, title, linkTo, linkLabel }) {
   );
 }
 
+function PublicAuthorCard({ author, onToggleFollow }) {
+  return (
+    <article className="social-card overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+      <div className="social-banner h-24" style={{ backgroundImage: author.profile_banner ? `url(${author.profile_banner})` : undefined }} />
+      <div className="relative px-4 pb-4 pt-0">
+        <div className="-mt-8 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {author.profile_image ? (
+              <img src={author.profile_image} alt="" className="h-16 w-16 rounded-2xl border-4 border-card object-cover shadow-sm" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-4 border-card bg-primary text-xl font-bold text-primary-foreground shadow-sm">
+                {(author.display_name || author.full_name || "A")[0].toUpperCase()}
+              </div>
+            )}
+            <div>
+              <Link to={`/autor/${author.username}`} className="text-base font-semibold text-foreground hover:text-primary">
+                {author.display_name || author.full_name}
+              </Link>
+              <p className="text-sm text-muted-foreground">@{author.username}</p>
+            </div>
+          </div>
+          <Button type="button" size="sm" variant={author.is_following ? "secondary" : "default"} onClick={() => onToggleFollow(author)} className="gap-2 rounded-full px-4">
+            <Heart className={`h-4 w-4 ${author.is_following ? "fill-current" : ""}`} />
+            {author.is_following ? "Seguindo" : "Seguir"}
+          </Button>
+        </div>
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{author.bio || "Esse autor ainda está montando seu perfil público."}</p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full bg-muted px-3 py-1.5">{author.followers_count} seguidores</span>
+          <span className="rounded-full bg-muted px-3 py-1.5">{author.following_count} seguindo</span>
+          <span className="rounded-full bg-muted px-3 py-1.5">{author.projects_count} obras públicas</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function WorkSpotlightCard({ work }) {
+  return (
+    <article className="rounded-3xl border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25">
+      <div className="mb-3 flex items-center gap-3">
+        {work.author_avatar ? (
+          <img src={work.author_avatar} alt="" className="h-11 w-11 rounded-2xl object-cover" />
+        ) : (
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 font-semibold text-primary">
+            {(work.author_name || "A")[0].toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{work.author_name}</p>
+          <Link to={`/autor/${work.author_username}`} className="text-xs text-muted-foreground hover:text-primary">
+            @{work.author_username}
+          </Link>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-2xl bg-muted" style={{ aspectRatio: "16/9" }}>
+        {work.cover_image ? <img src={work.cover_image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10"><BookOpen className="h-8 w-8 text-primary/40" /></div>}
+      </div>
+      <div className="mt-4">
+        <p className="text-sm font-semibold text-foreground">{work.name}</p>
+        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{work.public_summary || work.description}</p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full bg-muted px-3 py-1.5">{work.public_status || "Em andamento"}</span>
+          <span className="rounded-full bg-muted px-3 py-1.5">{work.manuscript_count} manuscritos</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function FeedCard({ item }) {
+  return (
+    <article className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+        <Radio className="h-3.5 w-3.5" />
+        Feed literário
+      </div>
+      <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+      <div className="mt-4 rounded-2xl border border-border bg-muted/40 p-4">
+        <p className="text-sm font-semibold text-foreground">{item.work.name}</p>
+        <p className="mt-1 text-sm text-muted-foreground">por {item.work.author_name}</p>
+      </div>
+    </article>
+  );
+}
+
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
   const [folders, setFolders] = useState([]);
+  const [socialFeed, setSocialFeed] = useState({ featuredAuthors: [], featuredWorks: [], feedItems: [] });
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [user, setUser] = useState(null);
@@ -34,19 +122,22 @@ export default function Dashboard() {
   async function loadData() {
     try {
       setLoading(true);
-      const [projectData, folderData, currentUser] = await Promise.all([
+      const [projectData, folderData, currentUser, feedData] = await Promise.all([
         base44.entities.Project.list("-updated_date", 50),
         base44.entities.Folder.list("-created_date", 50),
-        base44.auth.me()
+        base44.auth.me(),
+        base44.social.listFeed()
       ]);
       setProjects(projectData);
       setFolders(folderData);
       setUser(currentUser);
+      setSocialFeed(feedData);
     } catch (error) {
       console.error("Failed to load dashboard data", error);
       setProjects([]);
       setFolders([]);
       setUser(null);
+      setSocialFeed({ featuredAuthors: [], featuredWorks: [], feedItems: [] });
     } finally {
       setLoading(false);
     }
@@ -73,6 +164,12 @@ export default function Dashboard() {
   async function handleMove(project, folderId) {
     await base44.entities.Project.update(project.id, { folder_id: folderId || "" });
     loadData();
+  }
+
+  async function handleToggleFollow(author) {
+    const updatedUser = await base44.social.toggleFollow(author.id);
+    setUser(updatedUser);
+    setSocialFeed(await base44.social.listFeed());
   }
 
   const recentProjects = useMemo(() => projects.slice(0, 6), [projects]);
@@ -107,13 +204,13 @@ export default function Dashboard() {
           <div>
             <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1 text-xs font-semibold text-orange-700 shadow-sm">
               <Flame className="h-3.5 w-3.5" />
-              SequÃªncia diÃ¡ria
+              Sequência diária
             </div>
             <div className="flex items-end gap-3">
               <p className="text-3xl font-bold tracking-tight text-foreground">{user?.streakCount || 0}</p>
               <p className="pb-1 text-sm font-medium text-muted-foreground">dias seguidos</p>
             </div>
-            <p className="mt-2 max-w-lg text-sm text-muted-foreground">Escreva pelo menos 100 palavras por dia para manter sua sequÃªncia.</p>
+            <p className="mt-2 max-w-lg text-sm text-muted-foreground">Escreva pelo menos 100 palavras por dia para manter sua sequência.</p>
           </div>
 
           <div className="min-w-[230px] rounded-2xl border border-white/70 bg-white/75 p-4">
@@ -126,7 +223,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <Medal className="h-3.5 w-3.5 text-amber-500" />
-              {streakProgress.completedToday ? "Meta concluÃ­da hoje" : `${streakProgress.remaining} palavras restantes`}
+              {streakProgress.completedToday ? "Meta concluída hoje" : `${streakProgress.remaining} palavras restantes`}
             </div>
           </div>
         </div>
@@ -156,6 +253,31 @@ export default function Dashboard() {
           <span className="text-sm font-semibold text-primary">Criar projeto</span>
         </button>
       </div>
+
+      <section className="mb-12">
+        <SectionHeader icon={Sparkles} title="Descobrir autores" linkTo="/search" linkLabel="Explorar" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {socialFeed.featuredAuthors.map((author) => (
+            <PublicAuthorCard key={author.id} author={author} onToggleFollow={handleToggleFollow} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <SectionHeader icon={Radio} title="Feed literário" linkTo={`/autor/${user?.username || "demo"}`} linkLabel="Meu perfil público" />
+        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4">
+            {socialFeed.feedItems.map((item) => (
+              <FeedCard key={item.id} item={item} />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {socialFeed.featuredWorks.slice(0, 3).map((work) => (
+              <WorkSpotlightCard key={work.id} work={work} />
+            ))}
+          </div>
+        </div>
+      </section>
 
       {recentProjects.length ? (
         <section className="mb-10">
