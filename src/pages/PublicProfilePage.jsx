@@ -44,6 +44,9 @@ function PostCard({ post }) {
         <span className="text-xs text-muted-foreground">{formatDate(post.created_date)}</span>
       </div>
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{post.content}</p>
+      <div className="mt-4 inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+        {post.content.length} caracteres
+      </div>
     </article>
   );
 }

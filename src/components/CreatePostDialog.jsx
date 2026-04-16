@@ -48,6 +48,7 @@ export default function CreatePostDialog({ open, onOpenChange, onSuccess }) {
               rows={6}
               placeholder="Compartilhe uma atualização, bastidores da escrita, aviso de capítulo novo ou uma pergunta para seus leitores."
             />
+            <div className="mt-2 text-right text-xs text-muted-foreground">{content.trim().length} caracteres</div>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
             Seu post será exibido no seu perfil público de autor e fica preparado para futuras áreas de feed social.
