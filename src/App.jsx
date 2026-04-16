@@ -32,21 +32,23 @@ function LoadingScreen() {
 }
 
 function AuthenticatedApp() {
-  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+  const { isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError, user } = useAuth();
 
   if (isLoadingAuth || isLoadingPublicSettings) return <LoadingScreen />;
+
+  const shouldShowAuthenticatedApp = isAuthenticated && !!user;
 
   return (
     <Routes>
       <Route path="/obra/:id" element={<PublicWorkPageResolved />} />
       <Route path="/autor/:username" element={<PublicProfilePage />} />
-      {authError?.type === "user_not_registered" ? (
+      {!shouldShowAuthenticatedApp && authError?.type === "user_not_registered" ? (
         <Route path="*" element={<UserNotRegisteredError />} />
-      ) : authError?.type === "auth_required" ? (
+      ) : !shouldShowAuthenticatedApp ? (
         <Route path="*" element={<AuthPageFixed />} />
       ) : (
         <>
-      <Route path="/manuscript/:id" element={<ManuscriptEditorPage />} />
+          <Route path="/manuscript/:id" element={<ManuscriptEditorPage />} />
           <Route element={<LayoutShellFixed />}>
             <Route path="/" element={<DashboardHomeRefined />} />
             <Route path="/discover" element={<DiscoverHub />} />

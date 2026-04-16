@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import { getBrazilDateKey, shouldSendReminder } from "@/lib/streak";
@@ -17,18 +17,46 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const authRequestRef = useRef(0);
+
+  const checkAppState = useCallback(async () => {
+    const requestId = authRequestRef.current + 1;
+    authRequestRef.current = requestId;
+
+    try {
+      setIsLoadingAuth(true);
+      const currentUser = await base44.auth.me();
+
+      if (authRequestRef.current !== requestId) return null;
+
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      setAuthError(null);
+      return currentUser;
+    } catch (error) {
+      if (authRequestRef.current !== requestId) return null;
+
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthError(normalizeAuthError(error, "Falha ao carregar a sessao."));
+      return null;
+    } finally {
+      if (authRequestRef.current === requestId) {
+        setIsLoadingAuth(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     checkAppState();
-  }, []);
+  }, [checkAppState]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
     function handleSessionChange(event) {
-      const changedKey = event?.detail?.key;
+      const changedKey = event?.detail?.key ?? event?.key ?? null;
       if (
-        !changedKey ||
         changedKey === "storyforge_session" ||
         changedKey === "storyforge_auth_register" ||
         changedKey === "storyforge_auth_delete"
@@ -46,7 +74,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener("storage", handleSessionChange);
       window.removeEventListener("focus", checkAppState);
     };
-  }, []);
+  }, [checkAppState]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -59,22 +87,6 @@ export function AuthProvider({ children }) {
     return () => window.clearInterval(interval);
   }, [user?.id, user?.wordsWrittenToday, user?.reminderSentDate, user?.wordsTrackingDate]);
 
-  async function checkAppState() {
-    try {
-      setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      setIsAuthenticated(true);
-      setAuthError(null);
-    } catch (error) {
-      setUser(null);
-      setIsAuthenticated(false);
-      setAuthError(normalizeAuthError(error, "Falha ao carregar a sessao."));
-    } finally {
-      setIsLoadingAuth(false);
-    }
-  }
-
   async function login(credentials) {
     try {
       const currentUser = await base44.auth.login(credentials);
@@ -84,6 +96,8 @@ export function AuthProvider({ children }) {
       return currentUser;
     } catch (error) {
       const normalized = normalizeAuthError(error, "Não foi possível iniciar a sessão.");
+      setUser(null);
+      setIsAuthenticated(false);
       setAuthError(normalized);
       throw createReadableError(normalized.message);
     }
@@ -98,6 +112,8 @@ export function AuthProvider({ children }) {
       return currentUser;
     } catch (error) {
       const message = error?.message || "Não foi possível criar a conta.";
+      setUser(null);
+      setIsAuthenticated(false);
       setAuthError({ type: "unknown", message });
       throw createReadableError(message);
     }
