@@ -22,15 +22,43 @@ export default function AuthPage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function validateForm() {
+    const email = form.email.trim();
+    const password = form.password.trim();
+    const displayName = form.display_name.trim();
+
+    if (mode === "register" && !displayName) {
+      return "Informe seu nome para criar a conta.";
+    }
+
+    if (!email) return "Informe seu email.";
+    if (!/\S+@\S+\.\S+/.test(email)) return "Informe um email válido.";
+    if (!password) return "Informe sua senha.";
+    if (mode === "register" && password.length < 6) {
+      return "A senha precisa ter pelo menos 6 caracteres.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
+    const validationMessage = validateForm();
+    if (validationMessage) {
+      toast.error(validationMessage);
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
-        await login({ email: form.email, password: form.password });
+        await login({ email: form.email.trim(), password: form.password });
         toast.success("Sessao iniciada.");
       } else {
-        await register(form);
+        await register({
+          display_name: form.display_name.trim(),
+          email: form.email.trim(),
+          password: form.password
+        });
         toast.success("Conta criada com sucesso.");
       }
       navigate("/");

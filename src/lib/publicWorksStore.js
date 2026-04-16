@@ -196,3 +196,11 @@ export function removeChapterFromPublicWork(publicWorkId, chapterId, userEmail) 
 
   return updatePublicWork(publicWorkId, { chapter_entries: normalizedEntries }, userEmail);
 }
+
+export function deletePublicWorksByAuthor(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  const filtered = listPublicWorks().filter((entry) => entry.created_by?.toLowerCase() !== normalizedEmail);
+  writeStorage(filtered);
+}

@@ -1,7 +1,8 @@
 ﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
-import { createPoll, createPost, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
+import { createPoll, createPost, deleteSocialContentByAuthor, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
 import { dispatchStoryforgeDataChanged, safeGetItem, safeReadJson, safeRemoveItem, safeSetItem, safeWriteJson, safePushState } from "@/lib/safeBrowserStorage";
+import { deletePublicWorksByAuthor, getPublicWork } from "@/lib/publicWorksStore";
 
 const STORAGE_KEYS = {
   users: "storyforge_users",
@@ -566,6 +567,20 @@ function saveCollection(entityName, records) {
   writeStorage(STORAGE_KEYS[entityName], records);
 }
 
+function listAllProjects() {
+  return getCollection("Project").map((project) => normalizePublicProject(project));
+}
+
+function listPublicProjects() {
+  return listAllProjects().filter((project) => project.is_public);
+}
+
+function listManuscriptsByProject(projectId) {
+  return getCollection("Manuscript")
+    .filter((item) => item.project_id === projectId)
+    .sort((left, right) => new Date(left.created_date || 0) - new Date(right.created_date || 0));
+}
+
 function sortRecords(records, order) {
   if (!order) return records;
   const descending = order.startsWith("-");
@@ -688,6 +703,9 @@ export const base44 = {
       if (!normalizedEmail || !password) {
         throw createAppError("Email e senha são obrigatórios.", { status: 400 });
       }
+      if (!display_name?.trim()) {
+        throw createAppError("Informe seu nome para criar a conta.", { status: 400 });
+      }
       const users = getUsers();
       if (users.some((user) => user.email.toLowerCase() === normalizedEmail)) {
         throw createAppError("Já existe uma conta com esse email.", { status: 409 });
@@ -697,8 +715,8 @@ export const base44 = {
         id: createId("user"),
         email: normalizedEmail,
         password,
-        full_name: display_name?.trim() || normalizedEmail.split("@")[0],
-        display_name: display_name?.trim() || normalizedEmail.split("@")[0],
+        full_name: display_name.trim(),
+        display_name: display_name.trim(),
         username: normalizedEmail.split("@")[0],
         bio: "",
         profile_image: "",
@@ -727,6 +745,7 @@ export const base44 = {
       users.push(nextUser);
       saveUsers(users);
       setSession(nextUser.id);
+      dispatchStoryforgeDataChanged("storyforge_auth_register");
       return sanitizeUser(syncCurrentUserRecord());
     },
     async updateMe(patch) {
@@ -766,11 +785,22 @@ export const base44 = {
     },
     async deleteMe() {
       const user = requireCurrentUser();
-      saveUsers(getUsers().filter((entry) => entry.id !== user.id));
-      saveCollection("Folder", withUserScope(getCollection("Folder"), user.email).length ? getCollection("Folder").filter((entry) => entry.created_by !== user.email) : getCollection("Folder"));
-      saveCollection("Project", withUserScope(getCollection("Project"), user.email).length ? getCollection("Project").filter((entry) => entry.created_by !== user.email) : getCollection("Project"));
-      saveCollection("Manuscript", withUserScope(getCollection("Manuscript"), user.email).length ? getCollection("Manuscript").filter((entry) => entry.created_by !== user.email) : getCollection("Manuscript"));
+      const remainingUsers = getUsers()
+        .filter((entry) => entry.id !== user.id)
+        .map((entry) => ({
+          ...entry,
+          follower_ids: (entry.follower_ids || []).filter((id) => id !== user.id),
+          following_ids: (entry.following_ids || []).filter((id) => id !== user.id)
+        }));
+
+      saveUsers(remainingUsers);
+      saveCollection("Folder", getCollection("Folder").filter((entry) => entry.created_by !== user.email));
+      saveCollection("Project", getCollection("Project").filter((entry) => entry.created_by !== user.email));
+      saveCollection("Manuscript", getCollection("Manuscript").filter((entry) => entry.created_by !== user.email));
+      deletePublicWorksByAuthor(user.email);
+      deleteSocialContentByAuthor(user.email);
       clearSession();
+      dispatchStoryforgeDataChanged("storyforge_auth_delete");
       return true;
     }
   },
@@ -785,12 +815,40 @@ export const base44 = {
         .map((entry) => sanitizeUser(entry))
         .filter((entry) => entry.public_profile);
     },
+    async getPublicWorkById(id) {
+      const publicUsers = await this.listPublicUsers();
+      const managedWork = getPublicWork(id);
+      if (managedWork) {
+        const author = publicUsers.find((entry) => entry.email === managedWork.created_by) || null;
+        return {
+          source: "managed",
+          work: clone(managedWork),
+          author,
+          manuscripts: listManuscriptsByProject(managedWork.project_id || "")
+        };
+      }
+
+      const project = listPublicProjects().find((entry) => entry.id === id);
+      if (!project) return null;
+
+      const author = publicUsers.find((entry) => entry.email === project.created_by) || null;
+      return {
+        source: "project",
+        work: {
+          ...clone(project),
+          author_name: author?.display_name || author?.full_name || "Autor",
+          author_username: author?.username || "",
+          author_avatar: author?.profile_image || "",
+          author_bio: author?.bio || ""
+        },
+        author,
+        manuscripts: listManuscriptsByProject(project.id)
+      };
+    },
     async listFeed() {
       const currentUser = getCurrentUserRecord();
       const publicUsers = await this.listPublicUsers();
-      const publicProjects = getCollection("Project")
-        .map((project) => normalizePublicProject(project))
-        .filter((project) => project.is_public)
+      const publicProjects = listPublicProjects()
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
 
       const featuredAuthors = publicUsers
@@ -832,9 +890,7 @@ export const base44 = {
     },
     async listDiscoverWorks() {
       const publicUsers = await this.listPublicUsers();
-      const publicProjects = getCollection("Project")
-        .map((project) => normalizePublicProject(project))
-        .filter((project) => project.is_public)
+      const publicProjects = listPublicProjects()
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
 
       return publicProjects.map((project) => {
@@ -856,8 +912,7 @@ export const base44 = {
         throw createAppError("Autor não encontrado", { status: 404 });
       }
 
-      const publicProjects = getCollection("Project")
-        .map((project) => normalizePublicProject(project))
+      const publicProjects = listPublicProjects()
         .filter((project) => project.created_by === author.email && project.is_public)
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date))
         .map((project) => ({

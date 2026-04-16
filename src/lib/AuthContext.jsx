@@ -27,7 +27,12 @@ export function AuthProvider({ children }) {
 
     function handleSessionChange(event) {
       const changedKey = event?.detail?.key;
-      if (!changedKey || changedKey === "storyforge_session" || changedKey === "storyforge_users") {
+      if (
+        !changedKey ||
+        changedKey === "storyforge_session" ||
+        changedKey === "storyforge_auth_register" ||
+        changedKey === "storyforge_auth_delete"
+      ) {
         checkAppState();
       }
     }

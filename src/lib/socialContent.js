@@ -189,3 +189,14 @@ export function votePoll(pollId, optionId, voterId) {
   writeStorage(STORAGE_KEYS.polls, polls);
   return clone(poll);
 }
+
+export function deleteSocialContentByAuthor(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  const nextPosts = listPosts().filter((entry) => entry.created_by?.toLowerCase() !== normalizedEmail);
+  const nextPolls = listPolls().filter((entry) => entry.created_by?.toLowerCase() !== normalizedEmail);
+
+  writeStorage(STORAGE_KEYS.posts, nextPosts);
+  writeStorage(STORAGE_KEYS.polls, nextPolls);
+}
