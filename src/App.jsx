@@ -1,6 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
-import LayoutShell from "@/components/LayoutShell";
+import LayoutShellFixed from "@/components/LayoutShellFixed";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
@@ -17,6 +17,7 @@ import ProjectView from "@/pages/ProjectView";
 import Projects from "@/pages/Projects";
 import PublicAuthorProfilePage from "@/pages/PublicAuthorProfilePage";
 import PublicWorkPage from "@/pages/PublicWorkPage";
+import PublicWorksPage from "@/pages/PublicWorksPage";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
@@ -42,10 +43,11 @@ function AuthenticatedApp() {
   return (
     <Routes>
       <Route path="/manuscript/:id" element={<ManuscriptEditorPage />} />
-      <Route element={<LayoutShell />}>
+      <Route element={<LayoutShellFixed />}>
         <Route path="/" element={<DashboardHome />} />
         <Route path="/discover" element={<DiscoverHub />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/public-works" element={<PublicWorksPage />} />
         <Route path="/project/:id" element={<ProjectView />} />
         <Route path="/folders" element={<Folders />} />
         <Route path="/folder/:id" element={<FolderView />} />

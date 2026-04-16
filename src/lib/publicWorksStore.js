@@ -27,6 +27,7 @@ function readStorage() {
 function writeStorage(value) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+  window.dispatchEvent(new CustomEvent("storyforge:data-changed", { detail: { key: STORAGE_KEY } }));
 }
 
 function createDemoPublicWorks() {

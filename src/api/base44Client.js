@@ -83,6 +83,7 @@ function readStorage(key, fallback) {
 function writeStorage(key, value) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(value));
+  window.dispatchEvent(new CustomEvent("storyforge:data-changed", { detail: { key } }));
 }
 
 function ensureSeedData() {

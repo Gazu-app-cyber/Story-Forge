@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Heart, Loader2, Medal, Plus, Radio, Sparkles, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Heart, Library, Loader2, Medal, Plus, Radio, Sparkles, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import CreatePublicWorkDialog from "@/components/CreatePublicWorkDialog";
@@ -130,6 +130,19 @@ export default function DashboardHome() {
 
   useEffect(() => {
     loadData();
+
+    function handleRefresh() {
+      loadData();
+    }
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("storyforge:data-changed", handleRefresh);
+    window.addEventListener("storage", handleRefresh);
+    return () => {
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("storyforge:data-changed", handleRefresh);
+      window.removeEventListener("storage", handleRefresh);
+    };
   }, []);
 
   async function handleToggleFavorite(project) {
@@ -216,6 +229,7 @@ export default function DashboardHome() {
       <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           { icon: BookOpen, label: "Projetos", value: projects.length, color: "text-primary bg-primary/10" },
+          { icon: Library, label: "Obras publicas", value: publicWorks.length, color: "text-emerald-600 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/30" },
           { icon: FolderOpen, label: "Pastas", value: folders.length, color: "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30" },
           { icon: Star, label: "Favoritos", value: favoriteProjects.length, color: "text-rose-500 bg-rose-100 dark:bg-rose-900/30" }
         ].map((stat) => (
@@ -272,7 +286,7 @@ export default function DashboardHome() {
       </section>
 
       <section className="mb-12">
-        <SectionHeader icon={BookOpen} title="Minhas obras públicas" linkTo="/discover" linkLabel="Explorar descoberta" />
+        <SectionHeader icon={BookOpen} title="Minhas obras publicas" linkTo="/public-works" linkLabel="Gerenciar obras" />
         {publicWorks.length ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {publicWorks.map((work) => (
