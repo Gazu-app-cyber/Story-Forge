@@ -527,10 +527,16 @@ function updateStoredUser(userId, updater) {
   }
   const current = hydrateUserRecord(users[index]);
   const patch = updater(current) || {};
-  users[index] = {
+  const nextUser = {
     ...current,
     ...patch,
-    social_links: normalizeSocialLinks((patch.social_links || current.social_links) ?? {}),
+    social_links: normalizeSocialLinks((patch.social_links || current.social_links) ?? {})
+  };
+  if (JSON.stringify(nextUser) === JSON.stringify(current)) {
+    return current;
+  }
+  users[index] = {
+    ...nextUser,
     updated_date: nowIso()
   };
   saveUsers(users);

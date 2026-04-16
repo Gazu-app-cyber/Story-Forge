@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Heart, Library, Loader2, Medal, Plus, Radio, Sparkles, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -90,6 +90,7 @@ export default function DashboardHome() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreatePublicWork, setShowCreatePublicWork] = useState(false);
   const [user, setUser] = useState(null);
+  const latestLoadRef = useRef(0);
 
   const buildFeedFromWorks = useCallback((works) => {
     return works.slice(0, 4).map((work) => ({
@@ -124,6 +125,9 @@ export default function DashboardHome() {
   }, [buildFeedFromWorks]);
 
   const loadData = useCallback(async () => {
+    const requestId = latestLoadRef.current + 1;
+    latestLoadRef.current = requestId;
+
     try {
       setLoading(true);
       const [projectData, folderData, currentUser] = await Promise.all([
@@ -132,6 +136,8 @@ export default function DashboardHome() {
         base44.auth.me()
       ]);
 
+      if (requestId !== latestLoadRef.current) return;
+
       setProjects(projectData);
       setFolders(folderData);
       setUser(currentUser);
@@ -139,6 +145,8 @@ export default function DashboardHome() {
 
       await loadSocialData(currentUser);
     } catch (error) {
+      if (requestId !== latestLoadRef.current) return;
+
       console.error("Failed to load dashboard data", error);
       setProjects([]);
       setFolders([]);
@@ -146,6 +154,7 @@ export default function DashboardHome() {
       setUser(null);
       setSocialFeed({ featuredAuthors: [], featuredWorks: [], feedItems: [] });
     } finally {
+      if (requestId !== latestLoadRef.current) return;
       setLoading(false);
     }
   }, [loadSocialData]);
@@ -157,15 +166,36 @@ export default function DashboardHome() {
       loadData();
     }
 
+    function handleDataChanged(event) {
+      const changedKey = event?.detail?.key;
+      if (!changedKey) {
+        loadData();
+        return;
+      }
+
+      const relevantKeys = new Set([
+        "storyforge_projects",
+        "storyforge_folders",
+        "storyforge_users",
+        "storyforge_session",
+        "storyforge_public_works",
+        "storyforge_manuscripts"
+      ]);
+
+      if (relevantKeys.has(changedKey)) {
+        loadData();
+      }
+    }
+
     window.addEventListener("focus", handleRefresh);
-    window.addEventListener("storyforge:data-changed", handleRefresh);
+    window.addEventListener("storyforge:data-changed", handleDataChanged);
     window.addEventListener("storage", handleRefresh);
     return () => {
       window.removeEventListener("focus", handleRefresh);
-      window.removeEventListener("storyforge:data-changed", handleRefresh);
+      window.removeEventListener("storyforge:data-changed", handleDataChanged);
       window.removeEventListener("storage", handleRefresh);
     };
-  }, []);
+  }, [loadData]);
 
   async function handleToggleFavorite(project) {
     await base44.entities.Project.update(project.id, { is_favorite: !project.is_favorite });
