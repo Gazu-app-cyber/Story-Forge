@@ -1,3 +1,5 @@
+import { dispatchStoryforgeDataChanged, safeReadJson, safeWriteJson } from "@/lib/safeBrowserStorage";
+
 const STORAGE_KEYS = {
   posts: "storyforge_posts",
   polls: "storyforge_polls"
@@ -16,19 +18,12 @@ function clone(value) {
 }
 
 function readStorage(key) {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return safeReadJson(key, []);
 }
 
 function writeStorage(key, value) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent("storyforge:data-changed", { detail: { key } }));
+  safeWriteJson(key, value);
+  dispatchStoryforgeDataChanged(key);
 }
 
 export function normalizePost(post = {}) {

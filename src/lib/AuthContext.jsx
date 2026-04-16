@@ -23,6 +23,27 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    function handleSessionChange(event) {
+      const changedKey = event?.detail?.key;
+      if (!changedKey || changedKey === "storyforge_session" || changedKey === "storyforge_users") {
+        checkAppState();
+      }
+    }
+
+    window.addEventListener("storyforge:data-changed", handleSessionChange);
+    window.addEventListener("storage", handleSessionChange);
+    window.addEventListener("focus", checkAppState);
+
+    return () => {
+      window.removeEventListener("storyforge:data-changed", handleSessionChange);
+      window.removeEventListener("storage", handleSessionChange);
+      window.removeEventListener("focus", checkAppState);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user) return undefined;
 
     const interval = window.setInterval(() => {
@@ -50,19 +71,31 @@ export function AuthProvider({ children }) {
   }
 
   async function login(credentials) {
-    const currentUser = await base44.auth.login(credentials);
-    setUser(currentUser);
-    setIsAuthenticated(true);
-    setAuthError(null);
-    return currentUser;
+    try {
+      const currentUser = await base44.auth.login(credentials);
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      setAuthError(null);
+      return currentUser;
+    } catch (error) {
+      const normalized = normalizeAuthError(error, "Não foi possível iniciar a sessão.");
+      setAuthError(normalized);
+      throw createReadableError(normalized.message);
+    }
   }
 
   async function register(payload) {
-    const currentUser = await base44.auth.register(payload);
-    setUser(currentUser);
-    setIsAuthenticated(true);
-    setAuthError(null);
-    return currentUser;
+    try {
+      const currentUser = await base44.auth.register(payload);
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      setAuthError(null);
+      return currentUser;
+    } catch (error) {
+      const message = error?.message || "Não foi possível criar a conta.";
+      setAuthError({ type: "unknown", message });
+      throw createReadableError(message);
+    }
   }
 
   async function logout() {
@@ -115,6 +148,12 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+function createReadableError(message) {
+  const error = new Error(message);
+  error.message = message;
+  return error;
 }
 
 export function useAuth() {

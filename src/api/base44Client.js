@@ -1,6 +1,7 @@
 ﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
 import { createPoll, createPost, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
+import { dispatchStoryforgeDataChanged, safeGetItem, safeReadJson, safeRemoveItem, safeSetItem, safeWriteJson, safePushState } from "@/lib/safeBrowserStorage";
 
 const STORAGE_KEYS = {
   users: "storyforge_users",
@@ -73,19 +74,12 @@ function createAppError(message, extra = {}) {
 }
 
 function readStorage(key, fallback) {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+  return safeReadJson(key, fallback);
 }
 
 function writeStorage(key, value) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent("storyforge:data-changed", { detail: { key } }));
+  safeWriteJson(key, value);
+  dispatchStoryforgeDataChanged(key);
 }
 
 function ensureSeedData() {
@@ -492,16 +486,17 @@ function saveUsers(users) {
 
 function getSession() {
   ensureSeedData();
-  return readStorage(STORAGE_KEYS.session, null);
+  return safeGetItem(STORAGE_KEYS.session);
 }
 
 function setSession(userId) {
-  writeStorage(STORAGE_KEYS.session, userId);
+  safeSetItem(STORAGE_KEYS.session, userId);
+  dispatchStoryforgeDataChanged(STORAGE_KEYS.session);
 }
 
 function clearSession() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_KEYS.session);
+  safeRemoveItem(STORAGE_KEYS.session);
+  dispatchStoryforgeDataChanged(STORAGE_KEYS.session);
 }
 
 function sanitizeUser(user) {
@@ -767,10 +762,7 @@ export const base44 = {
       return sanitizeUser(updateStoredUser(user.id, () => ({ reminderSentDate: dateKey })));
     },
     redirectToLogin() {
-      if (typeof window !== "undefined") {
-        window.history.pushState({}, "", "/login");
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      }
+      safePushState("/login");
     },
     async deleteMe() {
       const user = requireCurrentUser();
@@ -788,11 +780,14 @@ export const base44 = {
     Manuscript: createEntityApi("Manuscript")
   },
   social: {
-    async listFeed() {
-      const currentUser = getCurrentUserRecord();
-      const publicUsers = getUsers()
+    async listPublicUsers() {
+      return getUsers()
         .map((entry) => sanitizeUser(entry))
         .filter((entry) => entry.public_profile);
+    },
+    async listFeed() {
+      const currentUser = getCurrentUserRecord();
+      const publicUsers = await this.listPublicUsers();
       const publicProjects = getCollection("Project")
         .map((project) => normalizePublicProject(project))
         .filter((project) => project.is_public)
@@ -836,7 +831,7 @@ export const base44 = {
       };
     },
     async listDiscoverWorks() {
-      const publicUsers = getUsers().map((entry) => sanitizeUser(entry));
+      const publicUsers = await this.listPublicUsers();
       const publicProjects = getCollection("Project")
         .map((project) => normalizePublicProject(project))
         .filter((project) => project.is_public)
@@ -855,7 +850,7 @@ export const base44 = {
       });
     },
     async getPublicAuthorByUsername(username) {
-      const publicUsers = getUsers().map((entry) => sanitizeUser(entry));
+      const publicUsers = await this.listPublicUsers();
       const author = publicUsers.find((entry) => entry.public_profile && entry.username === username);
       if (!author) {
         throw createAppError("Autor não encontrado", { status: 404 });

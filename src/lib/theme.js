@@ -88,17 +88,16 @@ export function isCustomColorActive(theme = getTheme()) {
   return Boolean(theme.custom_primary);
 }
 
+import { safeReadJson, safeWriteJson } from "@/lib/safeBrowserStorage";
+
 function getStoredTheme() {
-  try {
-    return JSON.parse(localStorage.getItem("escritorio_theme") || "{}");
-  } catch {
-    return {};
-  }
+  return safeReadJson("escritorio_theme", {});
 }
 
 function getResolvedMode(theme) {
   const themeMode = theme.theme_mode || (theme.dark_mode ? "dark" : "system");
   if (themeMode === "system") {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "light";
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   return themeMode;
@@ -122,7 +121,7 @@ function applyTheme(theme) {
 export function saveTheme(themeData) {
   const current = getStoredTheme();
   const merged = { ...current, ...themeData };
-  localStorage.setItem("escritorio_theme", JSON.stringify(merged));
+  safeWriteJson("escritorio_theme", merged);
   applyTheme(merged);
 }
 
@@ -135,12 +134,23 @@ export function getResolvedThemeMode(theme = getTheme()) {
 }
 
 export function initThemeWatcher() {
-  if (typeof window === "undefined") return () => {};
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    applyTheme(getStoredTheme());
+    return () => {};
+  }
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const handler = () => applyTheme(getStoredTheme());
-  media.addEventListener("change", handler);
+  if (typeof media.addEventListener === "function") media.addEventListener("change", handler);
+  else if (typeof media.addListener === "function") media.addListener(handler);
   applyTheme(getStoredTheme());
-  return () => media.removeEventListener("change", handler);
+  return () => {
+    if (typeof media.removeEventListener === "function") media.removeEventListener("change", handler);
+    else if (typeof media.removeListener === "function") media.removeListener(handler);
+  };
 }
 
-applyTheme(getStoredTheme());
+try {
+  applyTheme(getStoredTheme());
+} catch (error) {
+  console.error("Failed to apply theme during bootstrap", error);
+}

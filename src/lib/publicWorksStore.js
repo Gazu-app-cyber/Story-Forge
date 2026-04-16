@@ -1,4 +1,5 @@
 import { normalizePublicWork } from "@/lib/publicWorks";
+import { dispatchStoryforgeDataChanged, safeReadJson, safeWriteJson } from "@/lib/safeBrowserStorage";
 
 const STORAGE_KEY = "storyforge_public_works";
 
@@ -15,19 +16,12 @@ function clone(value) {
 }
 
 function readStorage() {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return safeReadJson(STORAGE_KEY, []);
 }
 
 function writeStorage(value) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent("storyforge:data-changed", { detail: { key: STORAGE_KEY } }));
+  safeWriteJson(STORAGE_KEY, value);
+  dispatchStoryforgeDataChanged(STORAGE_KEY);
 }
 
 function createDemoPublicWorks() {
