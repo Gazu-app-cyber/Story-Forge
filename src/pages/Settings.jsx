@@ -295,7 +295,7 @@ export default function Settings() {
             </div>
             <div className="mt-4">
               <Button asChild variant="outline" size="sm">
-                <Link to={`/autor/${username || user?.username || "demo"}`}>Ver perfil público</Link>
+                <Link to="/public-profile">Ver perfil público</Link>
               </Button>
             </div>
           </div>

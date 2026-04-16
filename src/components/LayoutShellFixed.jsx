@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Compass, FolderOpen, Home, Library, Menu, PenTool, Plus, Search, Settings, Star, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Compass, FolderOpen, Globe, Home, Library, Menu, PenTool, Plus, Search, Settings, Star, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreatePublicWorkDialog from "@/components/CreatePublicWorkDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -25,6 +25,7 @@ function getPageMeta(pathname) {
   if (pathname.startsWith("/discover")) return { title: "Descobrir", backTo: "/" };
   if (pathname.startsWith("/obra/")) return { title: "Obra publica", backTo: "/public-works" };
   if (pathname.startsWith("/autor/")) return { title: "Autor", backTo: "/discover" };
+  if (pathname.startsWith("/public-profile")) return { title: "Perfil publico", backTo: "/" };
   if (pathname === "/settings") return { title: "Configuracoes", backTo: "/" };
   return null;
 }
@@ -100,6 +101,16 @@ export default function LayoutShellFixed() {
           ))}
 
           <div className="mt-2 border-t border-sidebar-border pt-2">
+            <Link
+              to="/public-profile"
+              className={cn(
+                "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
+                isActive("/public-profile") ? "bg-primary/10 text-primary" : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              )}
+            >
+              <Globe className={cn("h-4 w-4 shrink-0", isActive("/public-profile") ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground")} />
+              Perfil público
+            </Link>
             <Link
               to="/settings"
               className={cn(
