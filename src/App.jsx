@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import { isNativeApp } from "@/lib/mobile";
 import PageNotFound from "@/lib/PageNotFound";
 import { queryClientInstance } from "@/lib/query-client";
-import DashboardHome from "@/pages/DashboardHome";
+import DashboardHomeRefined from "@/pages/DashboardHomeRefined";
 import DiscoverHub from "@/pages/DiscoverHub";
 import Favorites from "@/pages/Favorites";
 import Folders from "@/pages/Folders";
@@ -44,7 +44,7 @@ function AuthenticatedApp() {
     <Routes>
       <Route path="/manuscript/:id" element={<ManuscriptEditorPage />} />
       <Route element={<LayoutShellFixed />}>
-        <Route path="/" element={<DashboardHome />} />
+        <Route path="/" element={<DashboardHomeRefined />} />
         <Route path="/discover" element={<DiscoverHub />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/public-works" element={<PublicWorksPage />} />
