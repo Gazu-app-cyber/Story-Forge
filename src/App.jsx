@@ -16,7 +16,7 @@ import ManuscriptEditorPage from "@/pages/ManuscriptEditorPage";
 import ProjectView from "@/pages/ProjectView";
 import Projects from "@/pages/Projects";
 import PublicProfilePage from "@/pages/PublicProfilePage";
-import PublicWorkPage from "@/pages/PublicWorkPage";
+import PublicWorkPageFixed from "@/pages/PublicWorkPageFixed";
 import PublicWorksPage from "@/pages/PublicWorksPage";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
@@ -55,7 +55,7 @@ function AuthenticatedApp() {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/public-profile" element={<PublicProfilePage />} />
         <Route path="/autor/:username" element={<PublicProfilePage />} />
-        <Route path="/obra/:id" element={<PublicWorkPage />} />
+        <Route path="/obra/:id" element={<PublicWorkPageFixed />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
