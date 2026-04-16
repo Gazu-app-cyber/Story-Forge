@@ -526,6 +526,17 @@ export const STORY_TEMPLATE_OPTIONS = STORY_TEMPLATES.map((template) => ({
   label: template.name
 }));
 
+export const STORY_GENRE_OPTIONS = Array.from(
+  new Set(
+    STORY_TEMPLATES.filter((template) => !["blank", "screenplay"].includes(template.id)).map((template) => template.name)
+  )
+)
+  .sort((left, right) => left.localeCompare(right, "pt-BR"))
+  .map((genre) => ({
+    value: genre,
+    label: genre
+  }));
+
 export function getStoryTemplateById(templateId) {
   return STORY_TEMPLATES.find((template) => template.id === templateId) || STORY_TEMPLATES[0];
 }

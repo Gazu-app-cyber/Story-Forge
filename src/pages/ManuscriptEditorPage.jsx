@@ -1,0 +1,617 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactQuill, { Quill } from "react-quill";
+import moment from "moment";
+import "moment/locale/pt-br";
+import { toast } from "sonner";
+import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Columns2, Download, Ellipsis, Eraser, FileImage, Highlighter, Loader2, Pencil, Redo2, ScanText, Star, Trash2, Undo2 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import AdaptiveSelect from "@/components/AdaptiveSelect";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { columnOptions, DEFAULT_DOCUMENT_LAYOUT, getDocumentLayoutStyle, marginOptions, normalizeDocumentLayout, orientationOptions, pageSizeOptions } from "@/lib/documentLayout";
+import { exportManuscriptAsDocx, exportManuscriptAsHtml, exportManuscriptAsPdf } from "@/lib/manuscriptExport";
+import { getTypeColor, getTypeIcon } from "@/lib/manuscriptTypes";
+import { checkFeatureAccess, checkWordLimit, countWordsFromHtml, getWritingStats } from "@/lib/planLimits";
+import { cn } from "@/lib/utils";
+import "@/lib/theme";
+
+moment.locale("pt-br");
+
+const Font = Quill.import("formats/font");
+Font.whitelist = ["source-sans", "inter", "crimson", "source-serif", "literata", "newsreader", "merriweather"];
+Quill.register(Font, true);
+
+const Size = Quill.import("attributors/style/size");
+Size.whitelist = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
+Quill.register(Size, true);
+
+const Parchment = Quill.import("parchment");
+const ParagraphBorder = new Parchment.Attributor.Style("paragraph-border", "border", { scope: Parchment.Scope.BLOCK });
+const ParagraphPadding = new Parchment.Attributor.Style("paragraph-padding", "padding", { scope: Parchment.Scope.BLOCK });
+const ParagraphRadius = new Parchment.Attributor.Style("paragraph-radius", "border-radius", { scope: Parchment.Scope.BLOCK });
+Quill.register(ParagraphBorder, true);
+Quill.register(ParagraphPadding, true);
+Quill.register(ParagraphRadius, true);
+
+const BORDER_STYLE = "1px solid rgba(148, 163, 184, 0.72)";
+const BORDER_PADDING = "0.85rem 1rem";
+const BORDER_RADIUS = "0.9rem";
+
+const quillFormats = [
+  "font",
+  "size",
+  "header",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "blockquote",
+  "script",
+  "align",
+  "list",
+  "bullet",
+  "color",
+  "background",
+  "link",
+  "image",
+  "paragraph-border",
+  "paragraph-padding",
+  "paragraph-radius"
+];
+
+const editorFonts = {
+  "'Source Sans 3', sans-serif": "source-sans",
+  "'Inter', sans-serif": "inter",
+  "'Crimson Pro', serif": "crimson",
+  "'Source Serif 4', serif": "source-serif",
+  "'Literata', serif": "literata",
+  "'Newsreader', serif": "newsreader",
+  "'Merriweather', serif": "merriweather",
+  "'Lora', serif": "source-serif"
+};
+
+function getPlainText(html) {
+  return html.replace(/<[^>]*>/g, "");
+}
+
+function getRange(quill) {
+  return quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+}
+
+function ActionButton({ icon: Icon, label, onClick, variant = "outline" }) {
+  return (
+    <Button type="button" variant={variant} size="sm" className="h-8 flex-none gap-1.5" onClick={onClick}>
+      <Icon className="h-3.5 w-3.5" />
+      <span className="hidden sm:inline">{label}</span>
+    </Button>
+  );
+}
+
+export default function ManuscriptEditorPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const quillRef = useRef(null);
+  const saveTimeout = useRef(null);
+  const nameInputRef = useRef(null);
+  const latestContentRef = useRef("");
+  const latestLayoutRef = useRef(DEFAULT_DOCUMENT_LAYOUT);
+  const wordLimitWarningRef = useRef(false);
+  const previousWordCountRef = useRef(0);
+  const streakDeltaRef = useRef(0);
+  const streakTimeoutRef = useRef(null);
+
+  const [manuscript, setManuscript] = useState(null);
+  const [project, setProject] = useState(null);
+  const [content, setContent] = useState("");
+  const [layout, setLayout] = useState(DEFAULT_DOCUMENT_LAYOUT);
+  const [name, setName] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [savingState, setSavingState] = useState("idle");
+  const [showDelete, setShowDelete] = useState(false);
+  const [bookMode, setBookMode] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [manuscriptList, currentUser] = await Promise.all([base44.entities.Manuscript.filter({ id }), base44.auth.me()]);
+        const currentManuscript = manuscriptList[0];
+        if (currentManuscript) {
+          const nextContent = currentManuscript.content || "";
+          const nextLayout = normalizeDocumentLayout(currentManuscript.layout);
+          setManuscript(currentManuscript);
+          setContent(nextContent);
+          setLayout(nextLayout);
+          setName(currentManuscript.name);
+          setUser(currentUser);
+          latestContentRef.current = nextContent;
+          latestLayoutRef.current = nextLayout;
+          previousWordCountRef.current = countWordsFromHtml(nextContent);
+          const projectList = await base44.entities.Project.filter({ id: currentManuscript.project_id });
+          setProject(projectList[0]);
+        }
+      } catch (error) {
+        console.error("Failed to load manuscript editor", error);
+        setManuscript(null);
+        setProject(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      if (streakTimeoutRef.current) clearTimeout(streakTimeoutRef.current);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    const editor = quillRef.current?.getEditor?.();
+    const root = editor?.root;
+    if (!root) return;
+    root.spellcheck = true;
+    root.lang = "pt-BR";
+    root.setAttribute("spellcheck", "true");
+    root.setAttribute("lang", "pt-BR");
+    root.setAttribute("autocorrect", "off");
+    root.setAttribute("autocomplete", "off");
+    root.setAttribute("autocapitalize", "off");
+  }, [loading, manuscript?.id, bookMode, content]);
+
+  const editorFont = user?.font_family || "'Crimson Pro', serif";
+  const editorSize = user?.font_size || 18;
+  const quillFontClass = editorFonts[editorFont] || "crimson";
+  const pageStyle = useMemo(() => getDocumentLayoutStyle(layout, editorFont, editorSize), [layout, editorFont, editorSize]);
+
+  const saveDocument = useCallback(
+    async (newContent, nextLayout) => {
+      setSavingState("saving");
+      await base44.entities.Manuscript.update(id, { content: newContent, layout: nextLayout });
+      setSavingState("saved");
+      setTimeout(() => setSavingState("idle"), 2500);
+    },
+    [id]
+  );
+
+  const queueSave = useCallback(
+    (nextContent, nextLayout) => {
+      latestContentRef.current = nextContent;
+      latestLayoutRef.current = nextLayout;
+      setSavingState("saving");
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(() => saveDocument(latestContentRef.current, latestLayoutRef.current), 900);
+    },
+    [saveDocument]
+  );
+
+  const quillModules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ font: Font.whitelist }],
+          [{ size: Size.whitelist }],
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ script: "super" }, { script: "sub" }],
+          [{ align: ["", "center", "right", "justify"] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ color: [] }, { background: [] }],
+          ["blockquote", "link", "image"],
+          ["border", "border-clear"],
+          ["clean"],
+          ["undo", "redo"]
+        ],
+        handlers: {
+          undo() {
+            this.quill.history.undo();
+          },
+          redo() {
+            this.quill.history.redo();
+          },
+          image: async function imageHandler() {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const { file_url } = await base44.integrations.Core.UploadFile({ file });
+              const range = getRange(this.quill);
+              this.quill.insertEmbed(range.index, "image", file_url, "user");
+              this.quill.setSelection(range.index + 1, 0, "silent");
+              queueSave(this.quill.root.innerHTML, latestLayoutRef.current);
+            };
+            input.click();
+          },
+          border: function borderHandler() {
+            const range = getRange(this.quill);
+            const [line] = this.quill.getLine(range.index);
+            const hasBorder = Boolean(line?.domNode?.style?.border);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-border", hasBorder ? false : BORDER_STYLE);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-padding", hasBorder ? false : BORDER_PADDING);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-radius", hasBorder ? false : BORDER_RADIUS);
+            queueSave(this.quill.root.innerHTML, latestLayoutRef.current);
+          },
+          "border-clear": function clearBorderHandler() {
+            const range = getRange(this.quill);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-border", false);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-padding", false);
+            this.quill.formatLine(range.index, Math.max(range.length, 1), "paragraph-radius", false);
+            queueSave(this.quill.root.innerHTML, latestLayoutRef.current);
+          }
+        }
+      },
+      history: {
+        delay: 600,
+        maxStack: 200,
+        userOnly: true
+      }
+    }),
+    [queueSave]
+  );
+
+  function handleContentChange(value) {
+    const limitStatus = checkWordLimit(value, user);
+    if (!limitStatus.allowed) {
+      setSavingState("idle");
+      if (!wordLimitWarningRef.current) {
+        toast.error(limitStatus.message);
+        wordLimitWarningRef.current = true;
+      }
+      return;
+    }
+    wordLimitWarningRef.current = false;
+    const nextWordCount = countWordsFromHtml(value);
+    const delta = Math.max(nextWordCount - previousWordCountRef.current, 0);
+    previousWordCountRef.current = nextWordCount;
+    setContent(value);
+    queueSave(value, latestLayoutRef.current);
+
+    if (delta > 0) {
+      streakDeltaRef.current += delta;
+      if (streakTimeoutRef.current) clearTimeout(streakTimeoutRef.current);
+      streakTimeoutRef.current = setTimeout(async () => {
+        try {
+          const updatedUser = await base44.auth.recordWords(streakDeltaRef.current);
+          setUser(updatedUser);
+        } catch (error) {
+          console.error("Failed to record writing progress", error);
+        } finally {
+          streakDeltaRef.current = 0;
+        }
+      }, 700);
+    }
+  }
+
+  function updateLayout(patch) {
+    const nextLayout = normalizeDocumentLayout({ ...latestLayoutRef.current, ...patch });
+    setLayout(nextLayout);
+    queueSave(latestContentRef.current, nextLayout);
+  }
+
+  async function handleNameSave() {
+    setEditingName(false);
+    if (name.trim() && name.trim() !== manuscript.name) {
+      await base44.entities.Manuscript.update(id, { name: name.trim() });
+      setManuscript((current) => ({ ...current, name: name.trim() }));
+    } else {
+      setName(manuscript.name);
+    }
+  }
+
+  async function handleToggleFavorite() {
+    const nextFavorite = !manuscript.is_favorite;
+    await base44.entities.Manuscript.update(id, { is_favorite: nextFavorite });
+    setManuscript((current) => ({ ...current, is_favorite: nextFavorite }));
+  }
+
+  async function handleDelete() {
+    await base44.entities.Manuscript.delete(id);
+    navigate(`/project/${manuscript.project_id}`);
+  }
+
+  function runEditorCommand(command) {
+    const editor = quillRef.current?.getEditor();
+    if (!editor) return;
+    if (command === "undo") editor.history.undo();
+    if (command === "redo") editor.history.redo();
+    if (command === "clean") {
+      const range = editor.getSelection();
+      if (range) editor.removeFormat(range.index, range.length);
+    }
+  }
+
+  const stats = useMemo(() => getWritingStats(content), [content]);
+  const wordLimitStatus = useMemo(() => checkWordLimit(content, user), [content, user]);
+  const canUseStats = checkFeatureAccess("stats", user);
+  const canExport = checkFeatureAccess("export", user);
+  const canUseBookMode = checkFeatureAccess("bookMode", user);
+  const bookPages = useMemo(() => {
+    const plainText = getPlainText(content).replace(/\s+/g, " ").trim();
+    if (!plainText) return ["Documento vazio."];
+    return plainText.match(/.{1,1400}(\s|$)/g) || [plainText];
+  }, [content]);
+
+  async function handleExport(format) {
+    if (!canExport) {
+      toast.error("Recurso disponível apenas para Premium e Pro.");
+      return;
+    }
+    try {
+      if (format === "pdf") {
+        await exportManuscriptAsPdf({ title: manuscript.name, html: content });
+        return;
+      }
+      if (format === "html") {
+        await exportManuscriptAsHtml({ title: manuscript.name, html: content });
+        return;
+      }
+      await exportManuscriptAsDocx({ title: manuscript.name, html: content });
+    } catch (error) {
+      toast.error(error?.message || "Não foi possível exportar este manuscrito.");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!manuscript) return null;
+
+  const TypeIcon = getTypeIcon(manuscript.type);
+  const typeColor = getTypeColor(manuscript.type);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md" style={{ paddingTop: "var(--safe-top)" }}>
+        <div className="flex items-center gap-3 px-3 py-3 sm:px-4">
+          <Link to={`/project/${manuscript.project_id}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border transition-colors hover:bg-muted">
+            <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+          </Link>
+
+          <div className="min-w-0 flex-1">
+            {project ? (
+              <p className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                <BookOpen className="h-3 w-3" />
+                {project.name}
+              </p>
+            ) : null}
+            <div className="flex items-center gap-2">
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  onBlur={handleNameSave}
+                  onKeyDown={(event) => event.key === "Enter" && handleNameSave()}
+                  className="min-w-0 max-w-xs flex-1 border-b border-primary bg-transparent text-sm font-semibold text-foreground outline-none"
+                  autoFocus
+                />
+              ) : (
+                <button onClick={() => setEditingName(true)} className="group flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-primary">
+                  <span className="max-w-[180px] truncate sm:max-w-xs">{manuscript.name}</span>
+                  <Pencil className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+              )}
+              <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", typeColor)}>
+                <TypeIcon className="h-2.5 w-2.5" />
+                {manuscript.type}
+              </span>
+            </div>
+          </div>
+
+          <div className="hidden items-center gap-2 text-[11px] text-muted-foreground sm:flex">
+            {savingState === "saving" ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Salvando
+              </>
+            ) : null}
+            {savingState === "saved" ? (
+              <>
+                <Check className="h-3 w-3 text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400">Salvo</span>
+              </>
+            ) : null}
+            {savingState === "idle" && manuscript.updated_date ? (
+              <>
+                <Clock className="h-3 w-3" />
+                {moment(manuscript.updated_date).fromNow()}
+              </>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <button onClick={handleToggleFavorite} className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-muted">
+              <Star className={cn("h-4 w-4", manuscript.is_favorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+            </button>
+            <button onClick={() => setShowDelete(true)} className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4 text-muted-foreground transition-colors hover:text-destructive" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mb-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-medium text-primary">Plano {(user?.plan || "free").toUpperCase()}</span>
+            <span>{stats.words} palavras</span>
+            {canUseStats ? <span>{stats.characters} caracteres</span> : null}
+            {canUseStats ? <span>{stats.pages} páginas estimadas</span> : null}
+            {!canUseStats && wordLimitStatus.limit !== Infinity ? <span>{wordLimitStatus.remaining} palavras restantes</span> : null}
+            <span>Fonte {editorSize}px</span>
+          </div>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 manuscript-toolbar-scroll">
+            <ActionButton icon={Undo2} label="Desfazer" onClick={() => runEditorCommand("undo")} />
+            <ActionButton icon={Redo2} label="Refazer" onClick={() => runEditorCommand("redo")} />
+            <ActionButton icon={Eraser} label="Limpar" onClick={() => runEditorCommand("clean")} />
+            {canUseBookMode ? <ActionButton icon={BookOpen} label={bookMode ? "Modo texto" : "Modo livro"} onClick={() => setBookMode((current) => !current)} variant={bookMode ? "default" : "outline"} /> : null}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-8 flex-none gap-1.5">
+                  <Ellipsis className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Mais</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {canExport ? (
+                  <>
+                    <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport("docx")}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar DOCX
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport("html")}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar HTML
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem disabled>
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportação disponível no Premium+
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {!wordLimitStatus.allowed ? (
+          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Você atingiu o limite do plano gratuito. Faça upgrade para continuar.
+          </div>
+        ) : null}
+
+        <div className="mb-4 grid gap-3 rounded-2xl border border-border bg-card p-4 md:grid-cols-4">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <ScanText className="h-3.5 w-3.5" />
+              Margens
+            </div>
+            <AdaptiveSelect value={layout.margin} onValueChange={(value) => updateLayout({ margin: value })} options={marginOptions} placeholder="Margens" title="Margens" />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <AlignJustify className="h-3.5 w-3.5" />
+              Orientação
+            </div>
+            <AdaptiveSelect value={layout.orientation} onValueChange={(value) => updateLayout({ orientation: value })} options={orientationOptions} placeholder="Orientação" title="Orientação" />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Highlighter className="h-3.5 w-3.5" />
+              Tamanho
+            </div>
+            <AdaptiveSelect value={layout.pageSize} onValueChange={(value) => updateLayout({ pageSize: value })} options={pageSizeOptions} placeholder="Tamanho" title="Tamanho da página" />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Columns2 className="h-3.5 w-3.5" />
+              Colunas
+            </div>
+            <AdaptiveSelect value={String(layout.columns)} onValueChange={(value) => updateLayout({ columns: Number(value) })} options={columnOptions} placeholder="Colunas" title="Colunas" />
+          </div>
+        </div>
+
+        <style>{`
+          .writer-editor .ql-editor {
+            font-family: var(--editor-font);
+            font-size: var(--editor-size);
+          }
+          .writer-editor .ql-editor p {
+            margin-bottom: 0.8em;
+          }
+          .writer-editor .ql-editor h1 {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 0.5em;
+          }
+          .writer-editor .ql-editor h2 {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 0.5em;
+          }
+          .writer-editor .ql-editor h3 {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 0.5em;
+          }
+          .writer-editor .ql-editor blockquote {
+            border-left: 3px solid hsl(var(--primary));
+            color: hsl(var(--muted-foreground));
+            font-style: italic;
+            margin: 1rem 0;
+            padding-left: 1rem;
+          }
+          .ql-font-source-sans { font-family: 'Source Sans 3', sans-serif; }
+          .ql-font-inter { font-family: 'Inter', sans-serif; }
+          .ql-font-crimson { font-family: 'Crimson Pro', serif; }
+          .ql-font-source-serif { font-family: 'Source Serif 4', serif; }
+          .ql-font-literata { font-family: 'Literata', serif; }
+          .ql-font-newsreader { font-family: 'Newsreader', serif; }
+          .ql-font-merriweather { font-family: 'Merriweather', serif; }
+        `}</style>
+
+        {bookMode ? (
+          <div className="book-preview-shell rounded-[1.5rem] border border-border/70 bg-[hsl(var(--muted)/0.55)] p-4 shadow-sm sm:p-6">
+            <div className="grid gap-5 lg:grid-cols-2">
+              {bookPages.map((page, index) => (
+                <article key={`${index}-${page.length}`} className="book-page rounded-[1.75rem] border border-border bg-card p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+                  <div className="mb-6 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <span>{project?.name || "StoryForge"}</span>
+                    <span>Página {index + 1}</span>
+                  </div>
+                  <div className="book-page-body whitespace-pre-wrap text-[15px] leading-8 text-foreground">{page}</div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="word-workspace rounded-[1.5rem] border border-border/70 bg-[hsl(var(--muted)/0.55)] p-3 shadow-sm sm:p-5">
+            <div className="writer-editor word-document overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_20px_60px_rgba(15,23,42,0.08)]" style={pageStyle}>
+              <ReactQuill
+                ref={quillRef}
+                theme="snow"
+                value={content}
+                onChange={handleContentChange}
+                modules={quillModules}
+                formats={quillFormats}
+                placeholder="Comece a escrever sua história..."
+                preserveWhitespace
+                className={cn("min-h-[70vh]", `font-${quillFontClass}`)}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2 font-medium text-foreground">
+            <FileImage className="h-4 w-4 text-primary" />
+            Editor expandido
+          </div>
+          <p>
+            A barra agora suporta imagem inline, destaque de texto, borda de parágrafo e configurações de página
+            persistidas junto ao manuscrito.
+          </p>
+        </div>
+
+        <div className="mt-3 flex justify-end text-[11px] tabular-nums text-muted-foreground">{stats.words} palavras</div>
+      </div>
+
+      <ConfirmDialog open={showDelete} onOpenChange={setShowDelete} title="Excluir manuscrito?" description="Esta ação não pode ser desfeita." onConfirm={handleDelete} destructive />
+    </div>
+  );
+}

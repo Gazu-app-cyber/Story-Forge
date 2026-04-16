@@ -409,3 +409,39 @@
   background:
     linear-gradient(180deg, hsl(var(--card)), hsl(var(--card)));
 }
+
+.manuscript-toolbar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.manuscript-toolbar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .word-document .ql-toolbar.ql-snow {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .word-document .ql-toolbar.ql-snow .ql-formats {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-right: 0;
+    white-space: nowrap;
+    flex: none;
+  }
+
+  .word-document .ql-container.ql-snow,
+  .word-document .ql-editor {
+    overflow: visible;
+  }
+}
