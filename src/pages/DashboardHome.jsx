@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock, Flame, FolderOpen, Heart, Library, Loader2, Medal, Plus, Radio, Sparkles, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -91,31 +91,53 @@ export default function DashboardHome() {
   const [showCreatePublicWork, setShowCreatePublicWork] = useState(false);
   const [user, setUser] = useState(null);
 
-  async function loadData() {
+  const buildFeedFromWorks = useCallback((works) => {
+    return works.slice(0, 4).map((work) => ({
+      id: `feed_${work.id}`,
+      title: `Obra em destaque: ${work.name}`,
+      body: work.public_summary || work.description || "Uma obra em destaque para a comunidade.",
+      work
+    }));
+  }, []);
+
+  const loadSocialData = useCallback(async (currentUser) => {
+    const [feedResult, usersResult] = await Promise.allSettled([base44.social.listFeed(), base44.auth.listUsers()]);
+
+    const users = usersResult.status === "fulfilled" ? usersResult.value : [];
+    const discoverWorks = listDiscoverPublicWorks(users);
+
+    if (feedResult.status === "fulfilled") {
+      setSocialFeed({
+        ...feedResult.value,
+        featuredWorks: discoverWorks.slice(0, 6),
+        feedItems: buildFeedFromWorks(discoverWorks)
+      });
+      return;
+    }
+
+    console.error("Failed to load dashboard social data", feedResult.reason);
+    setSocialFeed({
+      featuredAuthors: [],
+      featuredWorks: discoverWorks.slice(0, 6),
+      feedItems: buildFeedFromWorks(discoverWorks)
+    });
+  }, [buildFeedFromWorks]);
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [projectData, folderData, currentUser, feedData, users] = await Promise.all([
+      const [projectData, folderData, currentUser] = await Promise.all([
         base44.entities.Project.list("-updated_date", 50),
         base44.entities.Folder.list("-created_date", 50),
-        base44.auth.me(),
-        base44.social.listFeed(),
-        base44.auth.listUsers().catch(() => [])
+        base44.auth.me()
       ]);
-      const discoverWorks = listDiscoverPublicWorks(users);
+
       setProjects(projectData);
       setFolders(folderData);
       setUser(currentUser);
       setPublicWorks(listPublicWorksByAuthor(currentUser.email).map((work) => ({ ...work, author_username: currentUser.username || "" })));
-      setSocialFeed({
-        ...feedData,
-        featuredWorks: discoverWorks.slice(0, 6),
-        feedItems: discoverWorks.slice(0, 4).map((work) => ({
-          id: `feed_${work.id}`,
-          title: `Obra em destaque: ${work.name}`,
-          body: work.public_summary || work.description || "Uma obra em destaque para a comunidade.",
-          work
-        }))
-      });
+
+      await loadSocialData(currentUser);
     } catch (error) {
       console.error("Failed to load dashboard data", error);
       setProjects([]);
@@ -126,7 +148,7 @@ export default function DashboardHome() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [loadSocialData]);
 
   useEffect(() => {
     loadData();
