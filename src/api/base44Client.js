@@ -745,7 +745,6 @@ export const base44 = {
       users.push(nextUser);
       saveUsers(users);
       setSession(nextUser.id);
-      dispatchStoryforgeDataChanged("storyforge_auth_register");
       return sanitizeUser(syncCurrentUserRecord());
     },
     async updateMe(patch) {
