@@ -79,7 +79,7 @@ export function listPublicWorks() {
 
 export function listPublicWorksByAuthor(email) {
   return listPublicWorks()
-    .filter((work) => work.created_by === email)
+    .filter((work) => !work.created_by || work.created_by === email)
     .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
 }
 
