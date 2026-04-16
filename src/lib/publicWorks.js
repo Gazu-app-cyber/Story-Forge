@@ -20,7 +20,8 @@ export const ageRatingOptions = [
 ];
 
 export function normalizePublicWork(work = {}) {
-  const chapterEntries = Array.isArray(work.chapter_entries) ? work.chapter_entries : [];
+  const source = work && typeof work === "object" ? work : {};
+  const chapterEntries = Array.isArray(source.chapter_entries) ? source.chapter_entries : [];
 
   return {
     cover_image: "",
@@ -46,7 +47,7 @@ export function normalizePublicWork(work = {}) {
     public_comments: 0,
     public_views: 0,
     public_origin: "original",
-    ...work
+    ...source
   };
 }
 

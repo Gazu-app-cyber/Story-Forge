@@ -17,7 +17,7 @@ import ManuscriptEditorPage from "@/pages/ManuscriptEditorPage";
 import ProjectView from "@/pages/ProjectView";
 import Projects from "@/pages/Projects";
 import PublicProfilePage from "@/pages/PublicProfilePage";
-import PublicWorkPageFixed from "@/pages/PublicWorkPageFixed";
+import PublicWorkPageResolved from "@/pages/PublicWorkPageResolved";
 import PublicWorksPage from "@/pages/PublicWorksPage";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
@@ -38,7 +38,7 @@ function AuthenticatedApp() {
 
   return (
     <Routes>
-      <Route path="/obra/:id" element={<PublicWorkPageFixed />} />
+      <Route path="/obra/:id" element={<PublicWorkPageResolved />} />
       <Route path="/autor/:username" element={<PublicProfilePage />} />
       {authError?.type === "user_not_registered" ? (
         <Route path="*" element={<UserNotRegisteredError />} />
