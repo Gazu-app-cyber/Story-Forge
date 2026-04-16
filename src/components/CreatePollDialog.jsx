@@ -80,6 +80,7 @@ export default function CreatePollDialog({ open, onOpenChange, onSuccess }) {
                 Adicionar opção
               </Button>
             </div>
+            <div className="text-xs text-muted-foreground">{filledOptions.length} opção(ões) válidas</div>
             {options.map((option, index) => (
               <div key={`poll-option-${index}`} className="flex items-center gap-2">
                 <Input

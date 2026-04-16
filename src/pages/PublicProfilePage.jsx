@@ -67,22 +67,32 @@ function PollCard({ poll, canVote, onVote }) {
       <h3 className="text-base font-semibold text-foreground">{poll.question}</h3>
       <div className="mt-4 space-y-2">
         {poll.options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => onVote(poll.id, option.id)}
-            disabled={!canVote}
-            className={cn(
-              "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition-colors",
-              canVote ? "border-border bg-background hover:border-primary/35 hover:bg-primary/5" : "border-border bg-muted/40"
-            )}
-          >
-            <span className="font-medium text-foreground">{option.label}</span>
-            <span className="text-muted-foreground">{option.votes} votos</span>
-          </button>
+          <div key={option.id} className="overflow-hidden rounded-2xl border border-border bg-background">
+            <button
+              type="button"
+              onClick={() => onVote(poll.id, option.id)}
+              disabled={!canVote}
+              className={cn(
+                "flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors",
+                canVote ? "hover:bg-primary/5" : "bg-muted/30"
+              )}
+            >
+              <span className="font-medium text-foreground">{option.label}</span>
+              <span className="text-muted-foreground">{option.votes} votos</span>
+            </button>
+            <div className="h-1.5 bg-muted">
+              <div
+                className="h-full bg-primary/70 transition-all"
+                style={{ width: `${totalVotes ? (option.votes / totalVotes) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{totalVotes} voto{totalVotes !== 1 ? "s" : ""} no total</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>{totalVotes} voto{totalVotes !== 1 ? "s" : ""} no total</span>
+        {!canVote ? <span className="rounded-full bg-muted px-2 py-1">Você já votou</span> : null}
+      </div>
     </article>
   );
 }
