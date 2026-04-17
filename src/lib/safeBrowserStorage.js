@@ -1,4 +1,6 @@
 const memoryStore = new Map();
+let storageAvailabilityChecked = false;
+let cachedLocalStorage = null;
 
 function canUseWindow() {
   return typeof window !== "undefined";
@@ -6,14 +8,19 @@ function canUseWindow() {
 
 function getLocalStorage() {
   if (!canUseWindow()) return null;
+  if (storageAvailabilityChecked) return cachedLocalStorage;
 
   try {
     const storage = window.localStorage;
     const probeKey = "__storyforge_storage_probe__";
     storage.setItem(probeKey, "1");
     storage.removeItem(probeKey);
-    return storage;
+    cachedLocalStorage = storage;
+    storageAvailabilityChecked = true;
+    return cachedLocalStorage;
   } catch {
+    cachedLocalStorage = null;
+    storageAvailabilityChecked = true;
     return null;
   }
 }
@@ -118,4 +125,3 @@ export function safePushState(url) {
     window.location.assign(url);
   }
 }
-

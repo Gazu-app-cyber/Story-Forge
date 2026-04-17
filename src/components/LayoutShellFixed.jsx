@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, Compass, FolderOpen, Globe, Home, Library, Menu, PenTool, Plus, Search, Settings, Star, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import CreatePublicWorkDialog from "@/components/CreatePublicWorkDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/lib/AuthContext";
 import { cn } from "@/lib/utils";
 import "@/lib/theme";
 
@@ -34,13 +34,9 @@ export default function LayoutShellFixed() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const [showCreatePublicWork, setShowCreatePublicWork] = useState(false);
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
 
   useEffect(() => {
     setSidebarOpen(false);
