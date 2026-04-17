@@ -17,6 +17,7 @@ import ManuscriptEditorPage from "@/pages/ManuscriptEditorPage";
 import ProjectView from "@/pages/ProjectView";
 import Projects from "@/pages/Projects";
 import PublicProfilePage from "@/pages/PublicProfilePage";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
 import PublicWorkPageResolved from "@/pages/PublicWorkPageResolved";
 import PublicWorksPage from "@/pages/PublicWorksPage";
 import SearchPage from "@/pages/SearchPage";
@@ -41,6 +42,7 @@ function AuthenticatedApp() {
   return (
     <Routes>
       <Route path="/auth" element={<AuthPageResolved />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/obra/:id" element={<PublicWorkPageResolved />} />
       <Route path="/autor/:username" element={<PublicProfilePage />} />
       {!shouldShowAuthenticatedApp && authError?.type === "user_not_registered" ? (
