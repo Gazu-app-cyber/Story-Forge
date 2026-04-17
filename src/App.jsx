@@ -21,7 +21,7 @@ import PublicWorkPageResolved from "@/pages/PublicWorkPageResolved";
 import PublicWorksPage from "@/pages/PublicWorksPage";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
-import AuthPageFixed from "@/pages/AuthPageFixed";
+import AuthPageResolved from "@/pages/AuthPageResolved";
 
 function LoadingScreen() {
   return (
@@ -40,12 +40,13 @@ function AuthenticatedApp() {
 
   return (
     <Routes>
+      <Route path="/auth" element={<AuthPageResolved />} />
       <Route path="/obra/:id" element={<PublicWorkPageResolved />} />
       <Route path="/autor/:username" element={<PublicProfilePage />} />
       {!shouldShowAuthenticatedApp && authError?.type === "user_not_registered" ? (
         <Route path="*" element={<UserNotRegisteredError />} />
       ) : !shouldShowAuthenticatedApp ? (
-        <Route path="*" element={<AuthPageFixed />} />
+        <Route path="*" element={<AuthPageResolved />} />
       ) : (
         <>
           <Route path="/manuscript/:id" element={<ManuscriptEditorPage />} />
