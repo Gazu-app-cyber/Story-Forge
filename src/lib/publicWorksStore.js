@@ -19,9 +19,11 @@ function readStorage() {
   return safeReadJson(STORAGE_KEY, []);
 }
 
-function writeStorage(value) {
+function writeStorage(value, options = {}) {
   safeWriteJson(STORAGE_KEY, value);
-  dispatchStoryforgeDataChanged(STORAGE_KEY);
+  if (!options.silent) {
+    dispatchStoryforgeDataChanged(STORAGE_KEY);
+  }
 }
 
 function createDemoPublicWorks() {
@@ -63,7 +65,7 @@ export function ensurePublicWorksSeed() {
   const current = readStorage();
   if (current.length) return current.map((entry) => normalizePublicWork(entry));
   const seed = createDemoPublicWorks();
-  writeStorage(seed);
+  writeStorage(seed, { silent: true });
   return seed;
 }
 

@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ProjectCard from "@/components/ProjectCard";
 import PublicWorkCard from "@/components/PublicWorkCard";
+import { useAuth } from "@/lib/AuthContext";
 import { listDiscoverPublicWorks, listPublicWorksByAuthor } from "@/lib/publicWorksStore";
 import { getStreakProgress } from "@/lib/streak";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,7 @@ function FeedCard({ item }) {
 }
 
 export default function DashboardHomeRefined() {
+  const { user: authUser } = useAuth();
   const [projects, setProjects] = useState([]);
   const [folders, setFolders] = useState([]);
   const [publicWorks, setPublicWorks] = useState([]);
@@ -89,6 +91,8 @@ export default function DashboardHomeRefined() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [user, setUser] = useState(null);
   const latestLoadRef = useRef(0);
+  const inFlightLoadRef = useRef(false);
+  const pendingReloadRef = useRef(false);
 
   const shortcutLinks = useMemo(
     () => [
@@ -148,37 +152,52 @@ export default function DashboardHomeRefined() {
   );
 
   const loadData = useCallback(async () => {
-    const requestId = latestLoadRef.current + 1;
-    latestLoadRef.current = requestId;
+    if (inFlightLoadRef.current) {
+      pendingReloadRef.current = true;
+      return;
+    }
+
+    inFlightLoadRef.current = true;
 
     try {
-      setLoading(true);
-      const [projectData, folderData, currentUser] = await Promise.all([
-        base44.entities.Project.list("-updated_date", 50),
-        base44.entities.Folder.list("-created_date", 50),
-        base44.auth.me()
-      ]);
+      do {
+        pendingReloadRef.current = false;
+        const requestId = latestLoadRef.current + 1;
+        latestLoadRef.current = requestId;
 
-      if (requestId !== latestLoadRef.current) return;
+        try {
+          setLoading(true);
+          const currentUser = authUser?.email ? authUser : await base44.auth.me();
+          const [projectData, folderData] = await Promise.all([
+            base44.entities.Project.list("-updated_date", 50),
+            base44.entities.Folder.list("-created_date", 50)
+          ]);
 
-      setProjects(projectData);
-      setFolders(folderData);
-      setUser(currentUser);
-      setPublicWorks(listPublicWorksByAuthor(currentUser.email).map((work) => ({ ...work, author_username: currentUser.username || "" })));
-      await loadSocialData();
-    } catch (error) {
-      if (requestId !== latestLoadRef.current) return;
-      console.error("Failed to load dashboard data", error);
-      setProjects([]);
-      setFolders([]);
-      setPublicWorks([]);
-      setUser(null);
-      setSocialFeed({ featuredAuthors: [], featuredWorks: [], feedItems: [] });
+          if (requestId !== latestLoadRef.current) continue;
+
+          setProjects(projectData);
+          setFolders(folderData);
+          setUser(currentUser);
+          setPublicWorks(listPublicWorksByAuthor(currentUser.email).map((work) => ({ ...work, author_username: currentUser.username || "" })));
+          await loadSocialData();
+        } catch (error) {
+          if (requestId !== latestLoadRef.current) continue;
+          console.error("Failed to load dashboard data", error);
+          setProjects([]);
+          setFolders([]);
+          setPublicWorks([]);
+          setUser(authUser?.email ? authUser : null);
+          setSocialFeed({ featuredAuthors: [], featuredWorks: [], feedItems: [] });
+        } finally {
+          if (requestId === latestLoadRef.current) {
+            setLoading(false);
+          }
+        }
+      } while (pendingReloadRef.current);
     } finally {
-      if (requestId !== latestLoadRef.current) return;
-      setLoading(false);
+      inFlightLoadRef.current = false;
     }
-  }, [loadSocialData]);
+  }, [authUser, loadSocialData]);
 
   useEffect(() => {
     loadData();
@@ -197,7 +216,6 @@ export default function DashboardHomeRefined() {
       const relevantKeys = new Set([
         "storyforge_projects",
         "storyforge_folders",
-        "storyforge_users",
         "storyforge_session",
         "storyforge_public_works",
         "storyforge_manuscripts"
@@ -217,6 +235,12 @@ export default function DashboardHomeRefined() {
       window.removeEventListener("storage", handleRefresh);
     };
   }, [loadData]);
+
+  useEffect(() => {
+    if (authUser?.email) {
+      setUser(authUser);
+    }
+  }, [authUser]);
 
   async function handleToggleFavorite(project) {
     await base44.entities.Project.update(project.id, { is_favorite: !project.is_favorite });
