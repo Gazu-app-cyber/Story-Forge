@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, EyeOff, Lock, Mail, PenTool, UserRound } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import { isNativeApp } from "@/lib/mobile";
@@ -558,6 +558,14 @@ export default function AuthPageResolved() {
             <span className="font-semibold text-slate-700">storyforge</span>
           </div>
         ) : null}
+
+        <p className="mt-5 text-center text-xs leading-6 text-slate-500 sm:text-sm">
+          Ao usar o StoryForge, você pode consultar nossa{" "}
+          <Link to="/privacy" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900">
+            Política de Privacidade
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
