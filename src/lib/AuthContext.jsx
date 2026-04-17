@@ -6,7 +6,10 @@ import { getBrazilDateKey, shouldSendReminder } from "@/lib/streak";
 const AuthContext = createContext();
 
 function normalizeAuthError(error, fallbackMessage) {
-  if (error?.type === "auth_required" || error?.status === 401) {
+  if (error?.type) {
+    return { type: error.type, message: error.message || fallbackMessage };
+  }
+  if (error?.status === 401) {
     return { type: "auth_required", message: error.message || "Autenticacao necessaria." };
   }
   return { type: "unknown", message: error?.message || fallbackMessage };
@@ -105,16 +108,22 @@ export function AuthProvider({ children }) {
 
   async function register(payload) {
     try {
-      const currentUser = await base44.auth.register(payload);
-      setUser(currentUser);
+      const result = await base44.auth.register(payload);
+      if (result?.status === "verification_required") {
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthError({ type: "email_not_verified", message: result.message });
+        return result;
+      }
+      setUser(result);
       setIsAuthenticated(true);
       setAuthError(null);
-      return currentUser;
+      return result;
     } catch (error) {
       const message = error?.message || "Não foi possível criar a conta.";
       setUser(null);
       setIsAuthenticated(false);
-      setAuthError({ type: "unknown", message });
+      setAuthError(normalizeAuthError(error, message));
       throw createReadableError(message);
     }
   }
@@ -124,6 +133,48 @@ export function AuthProvider({ children }) {
     setUser(null);
     setIsAuthenticated(false);
     setAuthError({ type: "auth_required", message: "Autenticacao necessaria." });
+  }
+
+  async function resendVerificationEmail(email) {
+    try {
+      const result = await base44.auth.resendVerificationEmail(email);
+      setAuthError({ type: "email_not_verified", message: result.message });
+      return result;
+    } catch (error) {
+      const normalized = normalizeAuthError(error, "Nao foi possivel reenviar a verificacao.");
+      setAuthError(normalized);
+      throw createReadableError(normalized.message);
+    }
+  }
+
+  async function requestPasswordReset(email) {
+    try {
+      return await base44.auth.requestPasswordReset(email);
+    } catch (error) {
+      const normalized = normalizeAuthError(error, "Nao foi possivel enviar a recuperacao de senha.");
+      setAuthError(normalized);
+      throw createReadableError(normalized.message);
+    }
+  }
+
+  async function verifyEmail(token) {
+    try {
+      return await base44.auth.verifyEmail(token);
+    } catch (error) {
+      const normalized = normalizeAuthError(error, "Nao foi possivel verificar o email.");
+      setAuthError(normalized);
+      throw createReadableError(normalized.message);
+    }
+  }
+
+  async function resetPassword(token, password) {
+    try {
+      return await base44.auth.resetPassword(token, password);
+    } catch (error) {
+      const normalized = normalizeAuthError(error, "Nao foi possivel redefinir a senha.");
+      setAuthError(normalized);
+      throw createReadableError(normalized.message);
+    }
   }
 
   async function checkDailyReminder() {
@@ -163,6 +214,10 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        resendVerificationEmail,
+        requestPasswordReset,
+        verifyEmail,
+        resetPassword,
         navigateToLogin: () => {}
       }}
     >
