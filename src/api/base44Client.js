@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   Folder: "storyforge_folders",
   Manuscript: "storyforge_manuscripts"
 };
+let seedDataInitialized = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -135,6 +136,8 @@ function writeStorage(key, value) {
 }
 
 function ensureSeedData() {
+  if (seedDataInitialized) return;
+
   const users = readStorage(STORAGE_KEYS.users, null);
   if (users?.length) {
     const normalizedUsers = users.map((entry) => {
@@ -151,6 +154,7 @@ function ensureSeedData() {
 
     ensureDiscoverySeedData();
     ensureSocialContentSeed();
+    seedDataInitialized = true;
     return;
   }
 
@@ -400,6 +404,7 @@ function ensureSeedData() {
   writeStorage(STORAGE_KEYS.Project, [demoProject, collaboratorProject, publicAuthorProject]);
   writeStorage(STORAGE_KEYS.Manuscript, [demoManuscript, collaboratorManuscript, publicAuthorManuscript]);
   ensureSocialContentSeed();
+  seedDataInitialized = true;
 }
 
 function ensureDiscoverySeedData() {

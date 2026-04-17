@@ -11,11 +11,7 @@ function getLocalStorage() {
   if (storageAvailabilityChecked) return cachedLocalStorage;
 
   try {
-    const storage = window.localStorage;
-    const probeKey = "__storyforge_storage_probe__";
-    storage.setItem(probeKey, "1");
-    storage.removeItem(probeKey);
-    cachedLocalStorage = storage;
+    cachedLocalStorage = window.localStorage;
     storageAvailabilityChecked = true;
     return cachedLocalStorage;
   } catch {

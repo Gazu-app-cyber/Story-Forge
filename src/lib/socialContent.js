@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   posts: "storyforge_posts",
   polls: "storyforge_polls"
 };
+let socialSeedInitialized = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -101,6 +102,8 @@ function createSeedPolls() {
 }
 
 export function ensureSocialContentSeed() {
+  if (socialSeedInitialized) return;
+
   const posts = readStorage(STORAGE_KEYS.posts);
   const polls = readStorage(STORAGE_KEYS.polls);
 
@@ -111,6 +114,8 @@ export function ensureSocialContentSeed() {
   if (!polls.length) {
     writeStorage(STORAGE_KEYS.polls, createSeedPolls());
   }
+
+  socialSeedInitialized = true;
 }
 
 export function listPosts() {
