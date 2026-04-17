@@ -8,8 +8,14 @@
     <title>StoryForge - Seu espaco criativo</title>
     <script>
       try {
-        var saved = JSON.parse(localStorage.getItem("escritorio_theme") || "{}");
-        var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var storage = window.localStorage;
+        var rawTheme = "{}";
+        if (storage && typeof storage.getItem === "function") {
+          rawTheme = storage.getItem("escritorio_theme") || "{}";
+        }
+        var saved = JSON.parse(rawTheme);
+        var systemDark =
+          typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches;
         var mode = saved.theme_mode || (saved.dark_mode ? "dark" : "system");
         var shouldDark = mode === "dark" || (mode === "system" && systemDark);
         if (shouldDark) document.documentElement.classList.add("dark");

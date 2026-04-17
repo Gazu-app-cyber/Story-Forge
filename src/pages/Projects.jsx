@@ -6,6 +6,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import CreateProjectDialog from "@/components/CreateProjectDialog";
 import ProjectCard from "@/components/ProjectCard";
 import { checkProjectLimit, PLAN_DEFINITIONS } from "@/lib/planLimits";
+import { safeGetItem, safeSetItem } from "@/lib/safeBrowserStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -49,7 +50,7 @@ export default function Projects() {
       setProjects(projectData);
       setFolders(folderData);
       setUser(currentUser);
-      const storedViewMode = typeof window !== "undefined" ? window.localStorage.getItem(PROJECT_VIEW_STORAGE_KEY) : null;
+      const storedViewMode = safeGetItem(PROJECT_VIEW_STORAGE_KEY);
       setViewMode(storedViewMode || currentUser.project_view_mode || "grid");
     } catch (error) {
       console.error("Failed to load projects", error);
@@ -113,9 +114,7 @@ export default function Projects() {
 
   async function handleViewModeChange(nextMode) {
     setViewMode(nextMode);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(PROJECT_VIEW_STORAGE_KEY, nextMode);
-    }
+    safeSetItem(PROJECT_VIEW_STORAGE_KEY, nextMode);
     if (!user) return;
     try {
       const updatedUser = await base44.auth.updateMe({ project_view_mode: nextMode });
