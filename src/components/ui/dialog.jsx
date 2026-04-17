@@ -14,9 +14,13 @@ export function DialogContent({ className, children, ...props }) {
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-h-[calc(100vh-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-xl",
+          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem-var(--safe-top)-var(--safe-bottom))] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-xl",
           className
         )}
+        style={{
+          paddingTop: "max(1.5rem, calc(1rem + var(--safe-top) / 2))",
+          paddingBottom: "max(1.5rem, calc(1rem + var(--safe-bottom) / 2))"
+        }}
         {...props}
       >
         {children}

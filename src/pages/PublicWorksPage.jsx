@@ -69,7 +69,7 @@ export default function PublicWorksPage() {
               Aqui voce acompanha todas as obras publicas criadas, organiza capitulos importados e prepara o que vai para o feed e para a descoberta.
             </p>
           </div>
-          <Button onClick={() => setShowCreate(true)} className="gap-2 self-start lg:self-auto">
+          <Button onClick={() => setShowCreate(true)} className="gap-2 self-stretch lg:self-auto">
             <Plus className="h-4 w-4" />
             Nova obra publica
           </Button>

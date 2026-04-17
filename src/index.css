@@ -77,6 +77,7 @@
   body,
   #root {
     min-height: 100%;
+    min-height: 100dvh;
   }
 
   body {
@@ -85,6 +86,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
+    min-height: 100dvh;
   }
 
   button,
@@ -107,6 +109,12 @@
 .page-shell {
   padding-top: max(1rem, var(--safe-top));
   padding-bottom: calc(1rem + var(--safe-bottom));
+}
+
+.mobile-auth-shell {
+  min-height: 100dvh;
+  padding-top: max(1rem, var(--safe-top));
+  padding-bottom: max(1rem, var(--safe-bottom));
 }
 
 .mobile-bottom-safe {
@@ -333,6 +341,10 @@
 }
 
 @media (max-width: 768px) {
+  .page-shell {
+    padding-bottom: calc(5.5rem + var(--safe-bottom));
+  }
+
   .word-document .ql-toolbar.ql-snow {
     padding: 0.75rem;
   }

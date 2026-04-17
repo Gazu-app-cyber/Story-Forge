@@ -1,5 +1,6 @@
 ﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
+import { isNativeApp } from "@/lib/mobile";
 import { createPoll, createPost, deleteSocialContentByAuthor, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
 import { dispatchStoryforgeDataChanged, safeGetItem, safeReadJson, safeRemoveItem, safeSetItem, safeWriteJson, safePushState } from "@/lib/safeBrowserStorage";
 import { deletePublicWorksByAuthor, getPublicWork } from "@/lib/publicWorksStore";
@@ -36,8 +37,15 @@ function getAppOrigin() {
 
 function buildAuthActionLink(action, token) {
   const origin = getAppOrigin();
-  const path = `/auth?action=${encodeURIComponent(action)}&token=${encodeURIComponent(token)}`;
-  return origin ? `${origin}${path}` : path;
+  const query = `action=${encodeURIComponent(action)}&token=${encodeURIComponent(token)}`;
+  const browserPath = `/auth?${query}`;
+  const nativePath = `/#/auth?${query}`;
+
+  if (isNativeApp()) {
+    return origin ? `${origin}${nativePath}` : nativePath;
+  }
+
+  return origin ? `${origin}${browserPath}` : browserPath;
 }
 
 function createAuthDelivery(type, email, token) {

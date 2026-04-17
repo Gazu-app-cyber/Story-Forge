@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { Globe, ImagePlus, Instagram, Loader2, LogOut, Moon, Palette, Save, Smartphone, Trash2, Type, User, Youtube } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
@@ -54,6 +54,7 @@ const socialFields = [
 ];
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -195,7 +196,7 @@ export default function Settings() {
   async function handleDeleteAccount() {
     await base44.auth.deleteMe();
     toast.success("Conta removida.");
-    window.location.href = "/";
+    navigate("/auth", { replace: true });
   }
 
   async function handlePlanUpgrade(nextPlan) {
@@ -546,7 +547,7 @@ export default function Settings() {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Salvar configurações
         </Button>
-        <Button variant="outline" onClick={() => base44.auth.logout().then(() => (window.location.href = "/"))} className="gap-2">
+        <Button variant="outline" onClick={() => base44.auth.logout().then(() => navigate("/auth", { replace: true }))} className="gap-2">
           <LogOut className="h-4 w-4" />
           Sair da conta
         </Button>

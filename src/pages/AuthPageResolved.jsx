@@ -3,6 +3,7 @@ import { Eye, EyeOff, Lock, Mail, PenTool, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
+import { isNativeApp } from "@/lib/mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -273,6 +274,25 @@ export default function AuthPageResolved() {
     toast.success("Link copiado.");
   }
 
+  function openDeliveryLink() {
+    const link = deliveryState?.delivery?.link;
+    if (!link) return;
+
+    if (isNativeApp()) {
+      try {
+        const parsed = new URL(link, typeof window !== "undefined" ? window.location.origin : "https://localhost");
+        const route = parsed.hash?.startsWith("#/") ? parsed.hash.slice(1) : `${parsed.pathname}${parsed.search}`;
+        navigate(route || "/auth");
+        return;
+      } catch {
+        navigate("/auth");
+        return;
+      }
+    }
+
+    window.open(link, "_self");
+  }
+
   function renderDeliveryCard() {
     if (!deliveryState?.delivery) return null;
 
@@ -284,7 +304,7 @@ export default function AuthPageResolved() {
         </p>
         <div className="mt-3 break-all rounded-xl bg-white px-3 py-3 text-xs text-slate-700">{deliveryState.delivery.link}</div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Button type="button" onClick={() => window.open(deliveryState.delivery.link, "_self")} className="rounded-xl">
+          <Button type="button" onClick={openDeliveryLink} className="rounded-xl">
             Abrir link
           </Button>
           <Button type="button" variant="outline" onClick={copyDeliveryLink} className="rounded-xl">
@@ -518,16 +538,16 @@ export default function AuthPageResolved() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(80,109,184,0.16),_transparent_38%),linear-gradient(180deg,_#f6f8fb_0%,_#eef3fb_100%)] px-6 py-12">
+    <div className="mobile-auth-shell relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(80,109,184,0.16),_transparent_38%),linear-gradient(180deg,_#f6f8fb_0%,_#eef3fb_100%)] px-4 py-8 sm:px-6 sm:py-12">
       <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.8),transparent_42%,rgba(80,109,184,0.08))]" />
-      <div className="relative w-full max-w-xl rounded-[32px] border border-slate-200/80 bg-white/95 p-8 shadow-[0_30px_80px_rgba(28,42,74,0.12)] backdrop-blur">
-        <div className="mx-auto mb-8 flex h-28 w-28 items-center justify-center rounded-full bg-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)]">
-          <PenTool className="h-12 w-12 text-amber-400" strokeWidth={1.8} />
+      <div className="relative w-full max-w-xl rounded-[32px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_30px_80px_rgba(28,42,74,0.12)] backdrop-blur sm:p-8">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] sm:mb-8 sm:h-28 sm:w-28">
+          <PenTool className="h-9 w-9 text-amber-400 sm:h-12 sm:w-12" strokeWidth={1.8} />
         </div>
 
-        <div className="mb-8 text-center">
-          <h1 className="text-5xl font-bold tracking-tight text-slate-900">{activeTitle}</h1>
-          <p className="mt-4 text-xl text-slate-500">{activeSubtitle}</p>
+        <div className="mb-6 text-center sm:mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">{activeTitle}</h1>
+          <p className="mt-3 text-base text-slate-500 sm:mt-4 sm:text-xl">{activeSubtitle}</p>
         </div>
 
         {isVerificationScreen ? renderVerificationScreen() : isPasswordResetScreen ? renderPasswordResetScreen() : renderAuthForm()}

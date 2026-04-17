@@ -49,7 +49,7 @@ export default function LayoutShellFixed() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex min-h-[100dvh] bg-background lg:h-screen lg:overflow-hidden">
       {sidebarOpen ? <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
 
       <aside
@@ -63,7 +63,7 @@ export default function LayoutShellFixed() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm">
               <PenTool className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold tracking-tight text-sidebar-foreground">Escritorio</span>
+            <span className="font-semibold tracking-tight text-sidebar-foreground">StoryForge</span>
           </Link>
           <button className="text-muted-foreground lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-4 w-4" />
@@ -139,7 +139,7 @@ export default function LayoutShellFixed() {
         ) : null}
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden lg:overflow-hidden">
         <div className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur lg:hidden" style={{ paddingTop: "var(--safe-top)" }}>
           <div className="flex items-center gap-3 px-4 py-3">
             {pageMeta ? (
@@ -158,7 +158,7 @@ export default function LayoutShellFixed() {
                   <PenTool className="h-3.5 w-3.5 text-primary-foreground" />
                 </div>
               ) : null}
-              <span className="truncate text-sm font-semibold">{pageMeta?.title || "Escritorio"}</span>
+              <span className="truncate text-sm font-semibold">{pageMeta?.title || "StoryForge"}</span>
             </div>
           </div>
         </div>

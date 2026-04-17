@@ -288,12 +288,12 @@ export default function DashboardHomeRefined() {
   return (
     <div className="page-shell mx-auto max-w-5xl px-4 pb-28 sm:px-6 lg:pb-10">
       <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="mb-1 text-sm font-medium text-muted-foreground">{greeting()},</p>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{user?.display_name || user?.full_name || "Escritor"} ✨</h1>
           <p className="mt-2 text-[15px] text-muted-foreground">Continue sua história ou publique algo novo para a comunidade hoje.</p>
         </div>
-        <Button onClick={() => setShowCreateProject(true)} className="gap-2 self-start rounded-xl px-5">
+        <Button onClick={() => setShowCreateProject(true)} className="gap-2 self-stretch rounded-xl px-5 sm:self-start">
           <Plus className="h-4 w-4" />
           Criar projeto
         </Button>
