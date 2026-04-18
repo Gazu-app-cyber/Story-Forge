@@ -1,4 +1,7 @@
 ext {
+    // Capacitor 7 and the AndroidX stack used by this project require API 23+.
+    // Keeping this explicit avoids publishing a bundle that advertises support for
+    // devices the runtime cannot actually execute safely.
     minSdkVersion = 23
     compileSdkVersion = 35
     targetSdkVersion = 35

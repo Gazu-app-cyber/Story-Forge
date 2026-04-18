@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "app.storyforge.writer",
+  appId: "story.forge",
   appName: "StoryForge",
   webDir: "dist",
   bundledWebRuntime: false,
@@ -10,7 +10,8 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: false,
-    captureInput: true
+    captureInput: true,
+    webContentsDebuggingEnabled: false
   }
 };
 

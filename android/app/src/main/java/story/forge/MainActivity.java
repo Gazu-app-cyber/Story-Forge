@@ -1,4 +1,4 @@
-package app.storyforge.writer;
+package story.forge;
 
 import android.content.Intent;
 
