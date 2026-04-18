@@ -80,6 +80,16 @@ export function AuthProvider({ children }) {
   }, [checkAppState]);
 
   useEffect(() => {
+    const unsubscribe = base44.auth.onAuthStateChange?.(() => {
+      checkAppState();
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [checkAppState]);
+
+  useEffect(() => {
     if (!user) return undefined;
 
     const interval = window.setInterval(() => {

@@ -3,7 +3,6 @@ import { Eye, EyeOff, Lock, Mail, PenTool, UserRound } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
-import { isNativeApp } from "@/lib/mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -42,7 +41,6 @@ export default function AuthPageResolved() {
   const processedTokenRef = useRef("");
 
   const action = searchParams.get("action") || "";
-  const token = searchParams.get("token") || "";
   const isVerificationScreen = action === "verify-email";
   const isPasswordResetScreen = action === "reset-password";
 
@@ -59,13 +57,13 @@ export default function AuthPageResolved() {
   }, [isPasswordResetScreen, isVerificationScreen, mode]);
 
   useEffect(() => {
-    if (!isVerificationScreen || !token || processedTokenRef.current === token) return;
+    if (!isVerificationScreen || processedTokenRef.current === action) return;
 
-    processedTokenRef.current = token;
+    processedTokenRef.current = action;
     setLoading(true);
     setVerificationState({ status: "loading", message: "Verificando seu email..." });
 
-    verifyEmail(token)
+    verifyEmail()
       .then((result) => {
         setVerificationState({ status: "success", message: result.message });
         toast.success(result.message);
@@ -78,7 +76,7 @@ export default function AuthPageResolved() {
       .finally(() => {
         setLoading(false);
       });
-  }, [isVerificationScreen, token, verifyEmail]);
+  }, [action, isVerificationScreen, verifyEmail]);
 
   function clearSensitiveFields() {
     setForm((current) => ({
@@ -255,7 +253,7 @@ export default function AuthPageResolved() {
 
     setLoading(true);
     try {
-      const result = await resetPassword(token, form.password);
+      const result = await resetPassword("", form.password);
       clearSensitiveFields();
       toast.success(result.message);
       navigate("/auth");
@@ -268,49 +266,15 @@ export default function AuthPageResolved() {
     }
   }
 
-  async function copyDeliveryLink() {
-    if (!deliveryState?.delivery?.link || typeof navigator === "undefined" || !navigator.clipboard) return;
-    await navigator.clipboard.writeText(deliveryState.delivery.link);
-    toast.success("Link copiado.");
-  }
-
-  function openDeliveryLink() {
-    const link = deliveryState?.delivery?.link;
-    if (!link) return;
-
-    if (isNativeApp()) {
-      try {
-        const parsed = new URL(link, typeof window !== "undefined" ? window.location.origin : "https://localhost");
-        const route = parsed.hash?.startsWith("#/") ? parsed.hash.slice(1) : `${parsed.pathname}${parsed.search}`;
-        navigate(route || "/auth");
-        return;
-      } catch {
-        navigate("/auth");
-        return;
-      }
-    }
-
-    window.open(link, "_self");
-  }
-
   function renderDeliveryCard() {
-    if (!deliveryState?.delivery) return null;
+    if (!deliveryState?.message) return null;
 
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
         <p className="font-semibold">{deliveryState.message}</p>
-        <p className="mt-2 text-amber-800">
-          O projeto ainda usa auth propria sem servico transacional configurado, entao o link seguro esta disponivel aqui no app.
+        <p className="mt-2 text-emerald-800">
+          Confira sua caixa de entrada e também a pasta de spam. Se estiver no celular, você pode abrir o link no navegador do próprio aparelho.
         </p>
-        <div className="mt-3 break-all rounded-xl bg-white px-3 py-3 text-xs text-slate-700">{deliveryState.delivery.link}</div>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Button type="button" onClick={openDeliveryLink} className="rounded-xl">
-            Abrir link
-          </Button>
-          <Button type="button" variant="outline" onClick={copyDeliveryLink} className="rounded-xl">
-            Copiar link
-          </Button>
-        </div>
       </div>
     );
   }

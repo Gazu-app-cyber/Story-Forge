@@ -1,9 +1,9 @@
 ﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
-import { isNativeApp } from "@/lib/mobile";
+import { getAuthRedirectUrl, supabase } from "@/lib/supabaseClient";
 import { blockUser, createContentReport, deleteModerationDataByUser, isEitherDirectionBlocked, isUserBlocked, listBlockedUsersByBlocker, unblockUser } from "@/lib/moderationStore";
 import { createPoll, createPost, deleteSocialContentByAuthor, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
-import { dispatchStoryforgeDataChanged, safeGetItem, safeReadJson, safeRemoveItem, safeSetItem, safeWriteJson, safePushState } from "@/lib/safeBrowserStorage";
+import { dispatchStoryforgeDataChanged, safeGetItem, safeReadJson, safeRemoveItem, safeReplaceState, safeSetItem, safeWriteJson, safePushState } from "@/lib/safeBrowserStorage";
 import { deletePublicWorksByAuthor, getPublicWork } from "@/lib/publicWorksStore";
 
 const STORAGE_KEYS = {
@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
   Manuscript: "storyforge_manuscripts"
 };
 let seedDataInitialized = false;
+const PASSWORD_RECOVERY_FLAG = "storyforge_password_recovery_active";
 
 function nowIso() {
   return new Date().toISOString();
@@ -29,42 +30,6 @@ function normalizeEmail(value = "") {
 
 function buildUsernameFromEmail(email = "") {
   return normalizeEmail(email).split("@")[0].replace(/[^a-z0-9._-]/g, "") || `writer_${Date.now().toString(36)}`;
-}
-
-function getAppOrigin() {
-  if (typeof window === "undefined") return "";
-  return window.location.origin;
-}
-
-function buildAuthActionLink(action, token) {
-  const origin = getAppOrigin();
-  const query = `action=${encodeURIComponent(action)}&token=${encodeURIComponent(token)}`;
-  const browserPath = `/auth?${query}`;
-  const nativePath = `/#/auth?${query}`;
-
-  if (isNativeApp()) {
-    return origin ? `${origin}${nativePath}` : nativePath;
-  }
-
-  return origin ? `${origin}${browserPath}` : browserPath;
-}
-
-function createAuthDelivery(type, email, token) {
-  const action = type === "password_reset" ? "reset-password" : "verify-email";
-  const subject =
-    type === "password_reset" ? "Redefina sua senha no StoryForge" : "Verifique seu email no StoryForge";
-
-  return {
-    type,
-    email,
-    deliveryMode: "in_app",
-    subject,
-    link: buildAuthActionLink(action, token),
-    message:
-      type === "password_reset"
-        ? "Geramos um link seguro para redefinir sua senha."
-        : "Geramos um link seguro para verificar seu email antes do primeiro login."
-  };
 }
 
 function clone(value) {
@@ -569,6 +534,222 @@ function findUserByEmail(email) {
   return getUsers().find((entry) => normalizeEmail(entry.email) === normalizedEmail) || null;
 }
 
+function buildDefaultUserProfile(email, displayName = "") {
+  const timestamp = nowIso();
+  const cleanName = displayName.trim();
+
+  return {
+    id: createId("user"),
+    email: normalizeEmail(email),
+    password: "",
+    full_name: cleanName,
+    display_name: cleanName,
+    username: buildUsernameFromEmail(email),
+    bio: "",
+    profile_image: "",
+    profile_banner: "",
+    social_links: createDefaultSocialLinks(),
+    public_profile: true,
+    follower_ids: [],
+    following_ids: [],
+    color_preset: "indigo",
+    custom_primary: "",
+    font_family: "'Crimson Pro', serif",
+    font_size: 18,
+    plan: "free",
+    project_view_mode: "grid",
+    theme_mode: "system",
+    dark_mode: false,
+    reduced_motion: false,
+    streakCount: 0,
+    lastStreakDate: "",
+    wordsWrittenToday: 0,
+    wordsTrackingDate: getBrazilDateKey(),
+    reminderSentDate: "",
+    email_verified_at: "",
+    email_verification_token: "",
+    email_verification_sent_at: "",
+    password_reset_token: "",
+    password_reset_sent_at: "",
+    created_date: timestamp,
+    updated_date: timestamp
+  };
+}
+
+function mapSupabaseUserToLocalPatch(authUser, fallbackDisplayName = "") {
+  const metadata = authUser?.user_metadata || {};
+  const displayName = metadata.display_name || metadata.full_name || fallbackDisplayName || "";
+  const username = metadata.username || buildUsernameFromEmail(authUser?.email);
+
+  return {
+    supabase_user_id: authUser?.id || "",
+    full_name: displayName,
+    display_name: displayName,
+    username,
+    email_verified_at: authUser?.email_confirmed_at || "",
+    email_verification_token: "",
+    email_verification_sent_at: "",
+    password_reset_token: "",
+    password_reset_sent_at: "",
+    account_status: "active"
+  };
+}
+
+function upsertLocalUserFromAuth(authUser, fallbackDisplayName = "") {
+  const normalizedEmail = normalizeEmail(authUser?.email);
+  if (!normalizedEmail) return null;
+
+  const users = getUsers();
+  const index = users.findIndex((entry) => normalizeEmail(entry.email) === normalizedEmail);
+  const patch = mapSupabaseUserToLocalPatch(authUser, fallbackDisplayName);
+
+  if (index === -1) {
+    const nextUser = normalizeUserProfile({
+      ...buildDefaultUserProfile(normalizedEmail, patch.display_name),
+      ...patch,
+      created_date: authUser?.created_at || nowIso(),
+      updated_date: nowIso()
+    });
+    users.push(nextUser);
+    saveUsers(users);
+    return nextUser;
+  }
+
+  const current = hydrateUserRecord(users[index]);
+  users[index] = normalizeUserProfile({
+    ...current,
+    ...patch,
+    full_name: patch.full_name || current.full_name,
+    display_name: patch.display_name || current.display_name,
+    username: patch.username || current.username,
+    updated_date: nowIso()
+  });
+  saveUsers(users);
+  return users[index];
+}
+
+function setPasswordRecoveryActive(active) {
+  if (active) {
+    safeSetItem(PASSWORD_RECOVERY_FLAG, "true");
+    return;
+  }
+  safeRemoveItem(PASSWORD_RECOVERY_FLAG);
+}
+
+function isPasswordRecoveryActive() {
+  return safeGetItem(PASSWORD_RECOVERY_FLAG) === "true";
+}
+
+function cleanupAuthCallbackUrl(action = "") {
+  if (typeof window === "undefined") return;
+  const suffix = action ? `?action=${encodeURIComponent(action)}` : "";
+  safeReplaceState(`/auth${suffix}`);
+}
+
+function createVerificationRequiredResponse(email) {
+  return {
+    status: "verification_required",
+    email: normalizeEmail(email),
+    message: "Conta criada. Verifique seu email antes de entrar."
+  };
+}
+
+function createPasswordResetSentResponse(email) {
+  return {
+    status: "password_reset_sent",
+    email: normalizeEmail(email),
+    message: "Se existir uma conta com esse email, enviamos um link para redefinir a senha."
+  };
+}
+
+function createReadableAuthError(message, extra = {}) {
+  return createAppError(message, extra);
+}
+
+function normalizeSupabaseError(error, context = "login") {
+  const message = String(error?.message || "").toLowerCase();
+
+  if (context === "login") {
+    if (message.includes("email not confirmed")) {
+      return createReadableAuthError("Verifique seu email antes de entrar.", { status: 403, type: "email_not_verified" });
+    }
+    if (message.includes("invalid login credentials")) {
+      return createReadableAuthError("Email ou senha inválidos.", { status: 401, type: "invalid_credentials" });
+    }
+  }
+
+  if (context === "register" && message.includes("already registered")) {
+    return createReadableAuthError("Já existe uma conta com esse email.", { status: 409, type: "email_already_registered" });
+  }
+
+  if (context === "reset-request") {
+    return createReadableAuthError("Não foi possível enviar o email de recuperação agora.", { status: 400, type: "password_reset_failed" });
+  }
+
+  if (context === "reset-password") {
+    return createReadableAuthError("Este link de redefinição é inválido, expirou ou já foi usado.", { status: 400, type: "reset_token_invalid" });
+  }
+
+  if (context === "verify-email") {
+    return createReadableAuthError("Não foi possível confirmar este email com o link informado.", { status: 400, type: "verification_failed" });
+  }
+
+  return createReadableAuthError(error?.message || "Não foi possível concluir a autenticação.", {
+    status: error?.status || 400,
+    type: error?.code || "auth_error"
+  });
+}
+
+async function getSupabaseSessionUser() {
+  const {
+    data: { session },
+    error
+  } = await supabase.auth.getSession();
+
+  if (error) throw normalizeSupabaseError(error);
+  return session?.user || null;
+}
+
+async function syncCurrentUserFromAuth() {
+  const authUser = await getSupabaseSessionUser();
+  if (!authUser) {
+    clearSession();
+    return null;
+  }
+
+  const localUser = upsertLocalUserFromAuth(authUser);
+  if (!localUser) {
+    clearSession();
+    return null;
+  }
+
+  setSession(localUser.id);
+  return updateStoredUser(localUser.id, (current) => reconcileStreakState(current));
+}
+
+async function loginWithLocalFallback(normalizedEmail, password) {
+  const user = findUserByEmail(normalizedEmail);
+
+  if (!user) {
+    throw createAppError("Nenhuma conta foi encontrada com esse email.", { status: 404, type: "user_not_found" });
+  }
+
+  if (user.account_status === "disabled") {
+    throw createAppError("Esta conta está desativada no momento.", { status: 403, type: "account_disabled" });
+  }
+
+  if (!user.email_verified_at) {
+    throw createAppError("Verifique seu email antes de entrar.", { status: 403, type: "email_not_verified" });
+  }
+
+  if (user.password !== password) {
+    throw createAppError("A senha informada não confere.", { status: 401, type: "invalid_password" });
+  }
+
+  setSession(user.id);
+  return sanitizeUser(syncCurrentUserRecord());
+}
+
 function getSession() {
   ensureSeedData();
   return safeGetItem(STORAGE_KEYS.session);
@@ -797,11 +978,20 @@ ensureSeedData();
 export const base44 = {
   auth: {
     async me() {
+      const authUser = await getSupabaseSessionUser();
+      if (authUser) {
+        return sanitizeUser(await syncCurrentUserFromAuth());
+      }
+
+      const currentUser = getCurrentUserRecord();
+      if (!currentUser) {
+        throw createAppError("Authentication required", { status: 401, type: "auth_required" });
+      }
+
       return sanitizeUser(syncCurrentUserRecord());
     },
     async login({ email, password }) {
       const normalizedEmail = normalizeEmail(email);
-      const user = findUserByEmail(normalizedEmail);
 
       if (!normalizedEmail) {
         throw createAppError("Informe seu email para entrar.", { status: 400, type: "missing_email" });
@@ -811,27 +1001,33 @@ export const base44 = {
         throw createAppError("Informe sua senha para entrar.", { status: 400, type: "missing_password" });
       }
 
-      if (!user) {
-        throw createAppError("Nenhuma conta foi encontrada com esse email.", { status: 404, type: "user_not_found" });
-      }
-
-      if (user.account_status === "disabled") {
-        throw createAppError("Esta conta está desativada no momento.", { status: 403, type: "account_disabled" });
-      }
-
-      if (!user.email_verified_at) {
-        throw createAppError("Verifique seu email antes de entrar.", {
-          status: 403,
-          type: "email_not_verified"
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password
         });
-      }
 
-      if (user.password !== password) {
-        throw createAppError("A senha informada não confere.", { status: 401, type: "invalid_password" });
-      }
+        if (error) throw normalizeSupabaseError(error, "login");
+        if (!data.user) {
+          throw createAppError("Nenhuma conta foi encontrada com esse email.", { status: 404, type: "user_not_found" });
+        }
 
-      setSession(user.id);
-      return sanitizeUser(syncCurrentUserRecord());
+        const localUser = upsertLocalUserFromAuth(data.user);
+        if (!localUser) {
+          throw createAppError("Não foi possível preparar o perfil local desta conta.", {
+            status: 500,
+            type: "user_profile_sync_failed"
+          });
+        }
+
+        setSession(localUser.id);
+        return sanitizeUser(syncCurrentUserRecord());
+      } catch (error) {
+        if (findUserByEmail(normalizedEmail)?.password) {
+          return loginWithLocalFallback(normalizedEmail, password);
+        }
+        throw error;
+      }
     },
     async register({ email, password, display_name }) {
       const normalizedEmail = normalizeEmail(email);
@@ -841,62 +1037,36 @@ export const base44 = {
       if (!display_name?.trim()) {
         throw createAppError("Informe seu nome para criar a conta.", { status: 400 });
       }
-      const users = getUsers();
-      if (users.some((user) => normalizeEmail(user.email) === normalizedEmail)) {
-        throw createAppError("Já existe uma conta com esse email.", { status: 409 });
-      }
-      const timestamp = nowIso();
-      const verificationToken = createId("verify");
-      const nextUser = {
-        id: createId("user"),
+
+      const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
-        full_name: display_name.trim(),
-        display_name: display_name.trim(),
-        username: buildUsernameFromEmail(normalizedEmail),
-        bio: "",
-        profile_image: "",
-        profile_banner: "",
-        social_links: createDefaultSocialLinks(),
-        public_profile: true,
-        follower_ids: [],
-        following_ids: [],
-        color_preset: "indigo",
-        custom_primary: "",
-        font_family: "'Crimson Pro', serif",
-        font_size: 18,
-        plan: "free",
-        project_view_mode: "grid",
-        theme_mode: "system",
-        dark_mode: false,
-        reduced_motion: false,
-        streakCount: 0,
-        lastStreakDate: "",
-        wordsWrittenToday: 0,
-        wordsTrackingDate: getBrazilDateKey(),
-        reminderSentDate: "",
-        email_verified_at: "",
-        email_verification_token: verificationToken,
-        email_verification_sent_at: timestamp,
-        password_reset_token: "",
-        password_reset_sent_at: "",
-        created_date: timestamp,
-        updated_date: timestamp
-      };
-      users.push(nextUser);
-      saveUsers(users);
-      return {
-        status: "verification_required",
-        email: normalizedEmail,
-        message: "Conta criada. Verifique seu email antes de entrar.",
-        delivery: createAuthDelivery("verification", normalizedEmail, verificationToken)
-      };
+        options: {
+          emailRedirectTo: getAuthRedirectUrl("verify-email"),
+          data: {
+            display_name: display_name.trim(),
+            full_name: display_name.trim(),
+            username: buildUsernameFromEmail(normalizedEmail)
+          }
+        }
+      });
+
+      if (error) throw normalizeSupabaseError(error, "register");
+
+      if (data.user) {
+        upsertLocalUserFromAuth(data.user, display_name.trim());
+      }
+
+      clearSession();
+      return createVerificationRequiredResponse(normalizedEmail);
     },
     async updateMe(patch) {
       const user = requireCurrentUser();
       return sanitizeUser(updateStoredUser(user.id, () => patch));
     },
     async logout() {
+      await supabase.auth.signOut();
+      setPasswordRecoveryActive(false);
       clearSession();
       return true;
     },
@@ -909,95 +1079,96 @@ export const base44 = {
       return sanitizeUser(findUserByEmail(email));
     },
     async resendVerificationEmail(email) {
-      const user = findUserByEmail(email);
-      if (!user) {
-        throw createAppError("Nenhuma conta foi encontrada com esse email.", { status: 404, type: "user_not_found" });
-      }
-      if (user.email_verified_at) {
-        throw createAppError("Este email já foi verificado. Você já pode entrar.", { status: 400, type: "email_already_verified" });
-      }
+      const normalizedEmail = normalizeEmail(email);
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: getAuthRedirectUrl("verify-email")
+        }
+      });
 
-      const token = createId("verify");
-      const updatedUser = updateStoredUser(user.id, () => ({
-        email_verification_token: token,
-        email_verification_sent_at: nowIso()
-      }));
+      if (error) throw normalizeSupabaseError(error, "verify-email");
 
       return {
         status: "verification_required",
-        email: updatedUser.email,
-        message: "Geramos um novo link de verificação para esta conta.",
-        delivery: createAuthDelivery("verification", updatedUser.email, token)
+        email: normalizedEmail,
+        message: "Enviamos um novo email de verificação para esta conta."
       };
     },
-    async verifyEmail(token) {
-      if (!token) {
-        throw createAppError("O link de verificação está incompleto.", { status: 400, type: "verification_token_missing" });
+    async verifyEmail() {
+      const authUser = await getSupabaseSessionUser();
+      if (!authUser?.email) {
+        throw createAppError("Este link de verificação é inválido, expirou ou já foi usado.", {
+          status: 400,
+          type: "verification_token_invalid"
+        });
       }
 
-      const user = getUsers().find((entry) => entry.email_verification_token === token);
-      if (!user) {
-        throw createAppError("Este link de verificação é inválido ou expirou.", { status: 404, type: "verification_token_invalid" });
+      if (!authUser.email_confirmed_at) {
+        throw createAppError("Seu email ainda não foi confirmado por este link.", {
+          status: 400,
+          type: "verification_token_invalid"
+        });
       }
 
-      updateStoredUser(user.id, () => ({
-        email_verified_at: nowIso(),
-        email_verification_token: "",
-        email_verification_sent_at: ""
-      }));
+      const localUser = upsertLocalUserFromAuth(authUser);
+      if (!localUser) {
+        throw createAppError("Não foi possível sincronizar esta conta com o perfil local.", {
+          status: 500,
+          type: "user_profile_sync_failed"
+        });
+      }
 
+      setSession(localUser.id);
+      cleanupAuthCallbackUrl("verify-email");
       return {
         status: "verified",
-        email: user.email,
-        message: "Email verificado com sucesso. Agora você já pode entrar."
+        email: authUser.email,
+        message: "Email verificado com sucesso. Sua conta já está pronta para uso."
       };
     },
     async requestPasswordReset(email) {
-      const user = findUserByEmail(email);
-      if (!user) {
-        throw createAppError("Nenhuma conta foi encontrada com esse email.", { status: 404, type: "user_not_found" });
-      }
+      const normalizedEmail = normalizeEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: getAuthRedirectUrl("reset-password")
+      });
 
-      const token = createId("reset");
-      const updatedUser = updateStoredUser(user.id, () => ({
-        password_reset_token: token,
-        password_reset_sent_at: nowIso()
-      }));
-
-      return {
-        status: "password_reset_sent",
-        email: updatedUser.email,
-        message: "Geramos um link seguro para redefinir sua senha.",
-        delivery: createAuthDelivery("password_reset", updatedUser.email, token)
-      };
+      if (error) throw normalizeSupabaseError(error, "reset-request");
+      return createPasswordResetSentResponse(normalizedEmail);
     },
-    async resetPassword(token, password) {
-      if (!token) {
-        throw createAppError("O link de redefinição está incompleto.", { status: 400, type: "reset_token_missing" });
-      }
+    async resetPassword(_token, password) {
       if (!password || String(password).length < 6) {
         throw createAppError("A nova senha precisa ter pelo menos 6 caracteres.", { status: 400, type: "password_too_short" });
       }
 
-      const user = getUsers().find((entry) => entry.password_reset_token === token);
-      if (!user) {
-        throw createAppError("Este link de redefinição é inválido ou expirou.", { status: 404, type: "reset_token_invalid" });
+      if (!isPasswordRecoveryActive()) {
+        throw createAppError("Abra este fluxo a partir do link recebido por email para redefinir sua senha.", {
+          status: 400,
+          type: "reset_token_invalid"
+        });
       }
 
-      updateStoredUser(user.id, () => ({
-        password,
-        password_reset_token: "",
-        password_reset_sent_at: "",
-        updated_date: nowIso()
-      }));
+      const { data, error } = await supabase.auth.updateUser({ password });
+      if (error) throw normalizeSupabaseError(error, "reset-password");
 
+      if (data.user) {
+        upsertLocalUserFromAuth(data.user);
+      }
+
+      setPasswordRecoveryActive(false);
+      cleanupAuthCallbackUrl();
       return {
         status: "password_reset_success",
-        email: user.email,
+        email: data.user?.email || "",
         message: "Senha redefinida com sucesso. Você já pode entrar com a nova senha."
       };
     },
     async syncStreak() {
+      const authUser = await getSupabaseSessionUser();
+      if (authUser) {
+        return sanitizeUser(await syncCurrentUserFromAuth());
+      }
       return sanitizeUser(syncCurrentUserRecord());
     },
     async recordWords(wordDelta) {
@@ -1014,7 +1185,24 @@ export const base44 = {
       return sanitizeUser(updateStoredUser(user.id, () => ({ reminderSentDate: dateKey })));
     },
     redirectToLogin() {
-      safePushState("/login");
+      safePushState("/auth");
+    },
+    onAuthStateChange(callback) {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setPasswordRecoveryActive(true);
+        }
+        if (event === "SIGNED_OUT") {
+          setPasswordRecoveryActive(false);
+          clearSession();
+        }
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED" || event === "PASSWORD_RECOVERY") {
+          dispatchStoryforgeDataChanged(STORAGE_KEYS.session);
+        }
+        callback?.(event);
+      });
+
+      return () => data.subscription.unsubscribe();
     },
     async deleteMe() {
       const user = requireCurrentUser();
@@ -1033,6 +1221,8 @@ export const base44 = {
       deletePublicWorksByAuthor(user.email);
       deleteSocialContentByAuthor(user.email);
       deleteModerationDataByUser(user.email);
+      await supabase.auth.signOut();
+      setPasswordRecoveryActive(false);
       clearSession();
       dispatchStoryforgeDataChanged("storyforge_auth_delete");
       return true;
