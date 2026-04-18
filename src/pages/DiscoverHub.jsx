@@ -18,7 +18,7 @@ export default function DiscoverHub() {
   useEffect(() => {
     async function loadWorks() {
       try {
-        const users = await base44.auth.listUsers().catch(() => []);
+        const users = await base44.social.listPublicUsers().catch(() => []);
         setWorks(listDiscoverPublicWorks(users));
       } catch {
         setWorks([]);
