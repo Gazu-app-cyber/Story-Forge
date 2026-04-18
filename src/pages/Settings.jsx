@@ -555,7 +555,13 @@ export default function Settings() {
 
       <section className="mt-12 rounded-2xl border border-destructive/20 bg-destructive/5 p-5">
         <h2 className="mb-2 text-base font-semibold text-destructive">Zona destrutiva</h2>
-        <p className="mb-4 text-sm text-muted-foreground">Use esta ação com cuidado. Ela exige confirmação antes de prosseguir.</p>
+        <p className="mb-3 text-sm text-muted-foreground">Use esta ação com cuidado. Ela exige confirmação antes de prosseguir.</p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Também mantemos uma página pública com instruções de exclusão e canal de contato para casos em que você não consiga acessar a conta:{" "}
+          <Link to="/delete-account" className="font-medium text-destructive underline underline-offset-4 hover:text-destructive/80">
+            /delete-account
+          </Link>
+        </p>
         <Button variant="destructive" className="gap-2" onClick={() => setShowDeleteAccount(true)}>
           <Trash2 className="h-4 w-4" />
           Excluir Conta

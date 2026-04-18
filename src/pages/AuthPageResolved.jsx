@@ -574,6 +574,10 @@ export default function AuthPageResolved() {
           <Link to="/community-guidelines" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900">
             Diretrizes da Comunidade
           </Link>
+          <span>•</span>
+          <Link to="/delete-account" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900">
+            Exclusão de conta
+          </Link>
         </div>
       </div>
     </div>

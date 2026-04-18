@@ -11,6 +11,7 @@ import PageNotFound from "@/lib/PageNotFound";
 import { queryClientInstance } from "@/lib/query-client";
 const DashboardHomeRefined = lazy(() => import("@/pages/DashboardHomeRefined"));
 const CommunityGuidelinesPage = lazy(() => import("@/pages/CommunityGuidelinesPage"));
+const DeleteAccountPage = lazy(() => import("@/pages/DeleteAccountPage"));
 const DiscoverHub = lazy(() => import("@/pages/DiscoverHub"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const Folders = lazy(() => import("@/pages/Folders"));
@@ -47,6 +48,7 @@ function AuthenticatedApp() {
       <Routes>
         <Route path="/auth" element={<AuthPageResolved />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/terms" element={<TermsOfUsePage />} />
         <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
         <Route path="/obra/:id" element={<PublicWorkPageResolved />} />
