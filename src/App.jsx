@@ -9,6 +9,7 @@ import { isNativeApp } from "@/lib/mobile";
 import PageNotFound from "@/lib/PageNotFound";
 import { queryClientInstance } from "@/lib/query-client";
 import DashboardHomeRefined from "@/pages/DashboardHomeRefined";
+import CommunityGuidelinesPage from "@/pages/CommunityGuidelinesPage";
 import DiscoverHub from "@/pages/DiscoverHub";
 import Favorites from "@/pages/Favorites";
 import Folders from "@/pages/Folders";
@@ -23,6 +24,7 @@ import PublicWorksPage from "@/pages/PublicWorksPage";
 import SearchPage from "@/pages/SearchPage";
 import Settings from "@/pages/Settings";
 import AuthPageResolved from "@/pages/AuthPageResolved";
+import TermsOfUsePage from "@/pages/TermsOfUsePage";
 
 function LoadingScreen() {
   return (
@@ -43,6 +45,8 @@ function AuthenticatedApp() {
     <Routes>
       <Route path="/auth" element={<AuthPageResolved />} />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsOfUsePage />} />
+      <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
       <Route path="/obra/:id" element={<PublicWorkPageResolved />} />
       <Route path="/autor/:username" element={<PublicProfilePage />} />
       {!shouldShowAuthenticatedApp && authError?.type === "user_not_registered" ? (
