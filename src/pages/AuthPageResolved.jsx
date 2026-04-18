@@ -566,6 +566,15 @@ export default function AuthPageResolved() {
           </Link>
           .
         </p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 sm:text-sm">
+          <Link to="/terms" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900">
+            Termos de Uso
+          </Link>
+          <span>•</span>
+          <Link to="/community-guidelines" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900">
+            Diretrizes da Comunidade
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -154,6 +154,16 @@ export default function PrivacyPolicyPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contato</p>
             <p className="mt-2 text-sm leading-6 text-foreground">{PRIVACY_CONTACT_EMAIL}</p>
           </div>
+          <div className="sm:col-span-3">
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link to="/terms" className="font-medium text-primary hover:underline">
+                Termos de Uso
+              </Link>
+              <Link to="/community-guidelines" className="font-medium text-primary hover:underline">
+                Diretrizes da Comunidade
+              </Link>
+            </div>
+          </div>
         </div>
 
         <main className="space-y-5">

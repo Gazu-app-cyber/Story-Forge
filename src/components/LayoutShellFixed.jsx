@@ -124,6 +124,20 @@ export default function LayoutShellFixed() {
               <Globe className="h-4 w-4 shrink-0 text-sidebar-foreground/50 group-hover:text-sidebar-foreground" />
               Politica de privacidade
             </Link>
+            <Link
+              to="/terms"
+              className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/65 transition-all duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <Globe className="h-4 w-4 shrink-0 text-sidebar-foreground/50 group-hover:text-sidebar-foreground" />
+              Termos de uso
+            </Link>
+            <Link
+              to="/community-guidelines"
+              className="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/65 transition-all duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <Globe className="h-4 w-4 shrink-0 text-sidebar-foreground/50 group-hover:text-sidebar-foreground" />
+              Diretrizes da comunidade
+            </Link>
           </div>
         </nav>
 
