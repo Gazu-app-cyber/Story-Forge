@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Globe, Instagram, Link as LinkIcon, Loader2, MessageSquare, PenSquare, SquarePen, Users, Vote, Youtube } from "lucide-react";
+import { Ban, BarChart3, Flag, Globe, Instagram, Link as LinkIcon, Loader2, MessageSquare, PenSquare, ShieldCheck, SquarePen, Users, Vote, Youtube } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import CreatePollDialog from "@/components/CreatePollDialog";
 import CreatePostDialog from "@/components/CreatePostDialog";
 import PublicWorkCard from "@/components/PublicWorkCard";
+import ReportContentDialog from "@/components/ReportContentDialog";
 import { listPublicWorksByAuthor } from "@/lib/publicWorksStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,7 +35,7 @@ function formatDate(value) {
   }
 }
 
-function PostCard({ post }) {
+function PostCard({ post, onReport, canModerate }) {
   return (
     <article className="rounded-3xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -41,7 +43,15 @@ function PostCard({ post }) {
           <SquarePen className="h-3.5 w-3.5" />
           Post
         </span>
-        <span className="text-xs text-muted-foreground">{formatDate(post.created_date)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{formatDate(post.created_date)}</span>
+          {canModerate ? (
+            <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" onClick={() => onReport(post)}>
+              <Flag className="h-3.5 w-3.5" />
+              Denunciar
+            </Button>
+          ) : null}
+        </div>
       </div>
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{post.content}</p>
       <div className="mt-4 inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
@@ -51,7 +61,7 @@ function PostCard({ post }) {
   );
 }
 
-function PollCard({ poll, canVote, onVote }) {
+function PollCard({ poll, canVote, onVote, onReport, canModerate }) {
   const totalVotes = poll.options.reduce((sum, option) => sum + option.votes, 0);
 
   return (
@@ -61,7 +71,15 @@ function PollCard({ poll, canVote, onVote }) {
           <Vote className="h-3.5 w-3.5" />
           Enquete
         </span>
-        <span className="text-xs text-muted-foreground">{formatDate(poll.created_date)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{formatDate(poll.created_date)}</span>
+          {canModerate ? (
+            <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" onClick={() => onReport(poll)}>
+              <Flag className="h-3.5 w-3.5" />
+              Denunciar
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <h3 className="text-base font-semibold text-foreground">{poll.question}</h3>
@@ -106,14 +124,20 @@ export default function PublicProfilePage() {
   const [polls, setPolls] = useState([]);
   const [activeTab, setActiveTab] = useState("works");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [moderationState, setModerationState] = useState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showUnblockConfirm, setShowUnblockConfirm] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
 
   const isOwnProfile = Boolean(profile && currentUser && profile.id === currentUser.id);
 
   async function loadProfile() {
     try {
       setLoading(true);
+      setLoadError("");
       const viewer = await base44.auth.me().catch(() => null);
       const resolvedUsername = username || viewer?.username;
 
@@ -123,6 +147,7 @@ export default function PublicProfilePage() {
         setWorks([]);
         setPosts([]);
         setPolls([]);
+        setLoadError("");
         return;
       }
 
@@ -132,6 +157,10 @@ export default function PublicProfilePage() {
       setWorks(listPublicWorksByAuthor(data.author.email).map((work) => ({ ...work, author_username: data.author.username })));
       setPosts(data.posts || []);
       setPolls(data.polls || []);
+      setModerationState(
+        data.author?.moderation_state ||
+          (data.author?.email ? await base44.moderation.getUserModerationState(data.author.email) : { isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false })
+      );
     } catch (error) {
       console.error("Failed to load public profile", error);
       toast.error(error?.message || "Não foi possível carregar o perfil público.");
@@ -139,6 +168,8 @@ export default function PublicProfilePage() {
       setWorks([]);
       setPosts([]);
       setPolls([]);
+      setModerationState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
+      setLoadError(error?.message || "Nao foi possivel carregar o perfil publico.");
     } finally {
       setLoading(false);
     }
@@ -178,6 +209,32 @@ export default function PublicProfilePage() {
     }
   }
 
+  async function handleBlockUser() {
+    if (!profile?.email) return;
+    try {
+      await base44.moderation.blockUserByEmail(profile.email);
+      setShowBlockConfirm(false);
+      setModerationState({ isBlocked: true, blockedByViewer: true, viewerBlockedByUser: false });
+      toast.success("Usuario bloqueado.");
+      loadProfile();
+    } catch (error) {
+      toast.error(error?.message || "Nao foi possivel bloquear este usuario.");
+    }
+  }
+
+  async function handleUnblockUser() {
+    if (!profile?.email) return;
+    try {
+      await base44.moderation.unblockUserByEmail(profile.email);
+      setShowUnblockConfirm(false);
+      setModerationState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
+      toast.success("Usuario desbloqueado.");
+      loadProfile();
+    } catch (error) {
+      toast.error(error?.message || "Nao foi possivel desbloquear este usuario.");
+    }
+  }
+
   const visibleLinks = useMemo(() => Object.entries(profile?.social_links || {}).filter(([, value]) => value), [profile]);
 
   if (loading) {
@@ -188,7 +245,22 @@ export default function PublicProfilePage() {
     );
   }
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="page-shell mx-auto max-w-4xl px-4 pb-28 sm:px-6 lg:pb-10">
+        <div className="rounded-[1.75rem] border border-dashed border-border bg-card px-6 py-20 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Users className="h-6 w-6" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">Perfil publico indisponivel</p>
+          <p className="mt-2 text-sm text-muted-foreground">{loadError || "Nao foi possivel localizar este perfil publico."}</p>
+          <Button asChild className="mt-4">
+            <Link to="/discover">Voltar para descobrir</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell mx-auto max-w-6xl px-4 pb-28 sm:px-6 lg:pb-10">
@@ -220,9 +292,22 @@ export default function PublicProfilePage() {
                   </Button>
                 </>
               ) : (
-                <Button type="button" onClick={handleToggleFollow} variant={profile.is_following ? "secondary" : "default"} className="rounded-full px-5">
-                  {profile.is_following ? "Seguindo" : "Seguir autor"}
-                </Button>
+                <>
+                  <Button type="button" onClick={handleToggleFollow} variant={profile.is_following ? "secondary" : "default"} className="rounded-full px-5">
+                    {profile.is_following ? "Seguindo" : "Seguir autor"}
+                  </Button>
+                  {moderationState.blockedByViewer ? (
+                    <Button type="button" variant="secondary" className="rounded-full px-5" onClick={() => setShowUnblockConfirm(true)}>
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Desbloquear
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="outline" className="rounded-full px-5" onClick={() => setShowBlockConfirm(true)}>
+                      <Ban className="mr-2 h-4 w-4" />
+                      Bloquear usuario
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -305,7 +390,7 @@ export default function PublicProfilePage() {
           posts.length ? (
             <div className="grid gap-4 lg:grid-cols-2">
               {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
+                <PostCard key={post.id} post={post} onReport={setReportTarget} canModerate={!isOwnProfile} />
               ))}
             </div>
           ) : (
@@ -325,6 +410,8 @@ export default function PublicProfilePage() {
                   poll={poll}
                   canVote={Boolean(currentUser) && !(poll.voter_ids || []).includes(currentUser.id)}
                   onVote={handleVote}
+                  onReport={setReportTarget}
+                  canModerate={!isOwnProfile}
                 />
               ))}
             </div>
@@ -351,6 +438,32 @@ export default function PublicProfilePage() {
 
       <CreatePostDialog open={showCreatePost} onOpenChange={setShowCreatePost} onSuccess={loadProfile} />
       <CreatePollDialog open={showCreatePoll} onOpenChange={setShowCreatePoll} onSuccess={loadProfile} />
+      <ReportContentDialog
+        open={Boolean(reportTarget)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setReportTarget(null);
+        }}
+        contentType={reportTarget?.question ? "public_poll" : "public_post"}
+        contentId={reportTarget?.id || ""}
+        contentTitle={reportTarget?.question || reportTarget?.content?.slice(0, 80) || "Conteudo publico"}
+        contentAuthorEmail={profile?.email || ""}
+        triggerLabel="Denunciar conteudo"
+      />
+      <ConfirmDialog
+        open={showBlockConfirm}
+        onOpenChange={setShowBlockConfirm}
+        title="Bloquear este usuario?"
+        description="Ao bloquear esta conta, o app passa a ocultar perfil e conteudos publicos dela sempre que isso for possivel na camada atual."
+        onConfirm={handleBlockUser}
+        destructive
+      />
+      <ConfirmDialog
+        open={showUnblockConfirm}
+        onOpenChange={setShowUnblockConfirm}
+        title="Desbloquear este usuario?"
+        description="Ao desbloquear, o perfil publico e os conteudos desse usuario voltam a ficar acessiveis para a sua conta."
+        onConfirm={handleUnblockUser}
+      />
     </div>
   );
 }

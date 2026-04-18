@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, BookOpen, Library, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Ban, BookOpen, Flag, Library, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import PublicWorkCard from "@/components/PublicWorkCard";
+import ReportContentDialog from "@/components/ReportContentDialog";
 import { Button } from "@/components/ui/button";
 import { getAvailableManuscriptOptions, getPublicWorkChapterCount, getPublicWorkStatusLabel, normalizePublicWork } from "@/lib/publicWorks";
 import { addManuscriptsToPublicWork, getPublicWork, reorderPublicWorkChapter, removeChapterFromPublicWork } from "@/lib/publicWorksStore";
@@ -55,6 +57,10 @@ export default function PublicWorkPageResolved() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [isManagedPublicWork, setIsManagedPublicWork] = useState(false);
+  const [moderationState, setModerationState] = useState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showUnblockConfirm, setShowUnblockConfirm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +95,7 @@ export default function PublicWorkPageResolved() {
           setManuscripts([]);
           setUser(currentUser);
           setIsManagedPublicWork(false);
+          setModerationState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
           setLoadError("Não encontramos essa obra pública. Ela pode ter sido removida ou ainda não foi publicada corretamente.");
           return;
         }
@@ -116,6 +123,11 @@ export default function PublicWorkPageResolved() {
         setChapters(nextChapters);
         setManuscripts(manuscriptList);
         setIsManagedPublicWork(resolvedPayload.source === "managed");
+        setModerationState(
+          resolvedPayload.author?.email
+            ? await base44.moderation.getUserModerationState(resolvedPayload.author.email)
+            : { isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false }
+        );
       } catch (error) {
         if (cancelled) return;
         console.error("Failed to load public work page", error);
@@ -212,6 +224,30 @@ export default function PublicWorkPageResolved() {
     }
   }
 
+  async function handleBlockAuthor() {
+    if (!author?.email) return;
+    try {
+      await base44.moderation.blockUserByEmail(author.email);
+      setShowBlockConfirm(false);
+      setModerationState({ isBlocked: true, blockedByViewer: true, viewerBlockedByUser: false });
+      toast.success("Usuario bloqueado.");
+    } catch (error) {
+      toast.error(error?.message || "Nao foi possivel bloquear este usuario.");
+    }
+  }
+
+  async function handleUnblockAuthor() {
+    if (!author?.email) return;
+    try {
+      await base44.moderation.unblockUserByEmail(author.email);
+      setShowUnblockConfirm(false);
+      setModerationState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
+      toast.success("Usuario desbloqueado.");
+    } catch (error) {
+      toast.error(error?.message || "Nao foi possivel desbloquear este usuario.");
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -275,6 +311,25 @@ export default function PublicWorkPageResolved() {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumo completo</p>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{work.full_summary}</p>
           </div>
+          {!isOwner && author ? (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button type="button" variant="outline" className="gap-2" onClick={() => setShowReportDialog(true)}>
+                <Flag className="h-4 w-4" />
+                Denunciar obra
+              </Button>
+              {moderationState.blockedByViewer ? (
+                <Button type="button" variant="secondary" className="gap-2" onClick={() => setShowUnblockConfirm(true)}>
+                  <ShieldCheck className="h-4 w-4" />
+                  Desbloquear autor
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" className="gap-2" onClick={() => setShowBlockConfirm(true)}>
+                  <Ban className="h-4 w-4" />
+                  Bloquear autor
+                </Button>
+              )}
+            </div>
+          ) : null}
         </article>
       </section>
 
@@ -344,6 +399,33 @@ export default function PublicWorkPageResolved() {
           </div>
         )}
       </section>
+
+      <ReportContentDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        contentType="public_work"
+        contentId={work.id}
+        contentTitle={work.title}
+        contentAuthorEmail={author?.email || work.created_by}
+        triggerLabel="Denunciar obra publica"
+      />
+
+      <ConfirmDialog
+        open={showBlockConfirm}
+        onOpenChange={setShowBlockConfirm}
+        title="Bloquear este autor?"
+        description="Ao bloquear este usuario, o app passa a ocultar os conteudos publicos dele para a sua conta sempre que isso for possivel na camada atual."
+        onConfirm={handleBlockAuthor}
+        destructive
+      />
+
+      <ConfirmDialog
+        open={showUnblockConfirm}
+        onOpenChange={setShowUnblockConfirm}
+        title="Desbloquear este autor?"
+        description="Ao desbloquear, as obras e o perfil publico desse autor voltam a ficar acessiveis para a sua conta."
+        onConfirm={handleUnblockAuthor}
+      />
     </div>
   );
 }

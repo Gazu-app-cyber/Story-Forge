@@ -1,6 +1,7 @@
 ﻿import { applyWordsToStreak, getBrazilDateKey, normalizeStreakUser, reconcileStreakState } from "@/lib/streak";
 
 import { isNativeApp } from "@/lib/mobile";
+import { blockUser, createContentReport, deleteModerationDataByUser, isEitherDirectionBlocked, isUserBlocked, listBlockedUsersByBlocker, unblockUser } from "@/lib/moderationStore";
 import { createPoll, createPost, deleteSocialContentByAuthor, ensureSocialContentSeed, listPollsByAuthor, listPostsByAuthor, votePoll } from "@/lib/socialContent";
 import { dispatchStoryforgeDataChanged, safeGetItem, safeReadJson, safeRemoveItem, safeSetItem, safeWriteJson, safePushState } from "@/lib/safeBrowserStorage";
 import { deletePublicWorksByAuthor, getPublicWork } from "@/lib/publicWorksStore";
@@ -658,6 +659,32 @@ function listPublicProjects() {
   return listAllProjects().filter((project) => project.is_public);
 }
 
+function getCurrentViewerEmail() {
+  return normalizeEmail(getCurrentUserRecord()?.email);
+}
+
+function getBlockedEmailsForViewer(viewerEmail) {
+  return new Set(listBlockedUsersByBlocker(viewerEmail).map((block) => block.blocked_email));
+}
+
+function filterVisiblePublicUsers(users, viewerEmail) {
+  const blockedEmails = getBlockedEmailsForViewer(viewerEmail);
+  return users.filter((entry) => !blockedEmails.has(normalizeEmail(entry.email)));
+}
+
+function filterVisibleProjects(projects, viewerEmail) {
+  const blockedEmails = getBlockedEmailsForViewer(viewerEmail);
+  return projects.filter((project) => !blockedEmails.has(normalizeEmail(project.created_by)));
+}
+
+function assertViewerCanAccessAuthor(authorEmail, message) {
+  const viewerEmail = getCurrentViewerEmail();
+  if (!viewerEmail || !authorEmail) return;
+  if (isUserBlocked(viewerEmail, authorEmail)) {
+    throw createAppError(message || "Esse autor esta bloqueado para a sua conta.", { status: 403, type: "author_blocked" });
+  }
+}
+
 function listManuscriptsByProject(projectId) {
   return getCollection("Manuscript")
     .filter((item) => item.project_id === projectId)
@@ -1005,6 +1032,7 @@ export const base44 = {
       saveCollection("Manuscript", getCollection("Manuscript").filter((entry) => entry.created_by !== user.email));
       deletePublicWorksByAuthor(user.email);
       deleteSocialContentByAuthor(user.email);
+      deleteModerationDataByUser(user.email);
       clearSession();
       dispatchStoryforgeDataChanged("storyforge_auth_delete");
       return true;
@@ -1017,14 +1045,18 @@ export const base44 = {
   },
   social: {
     async listPublicUsers() {
-      return getUsers()
-        .map((entry) => sanitizeUser(entry))
-        .filter((entry) => entry.public_profile);
+      return filterVisiblePublicUsers(
+        getUsers()
+          .map((entry) => sanitizeUser(entry))
+          .filter((entry) => entry.public_profile),
+        getCurrentViewerEmail()
+      );
     },
     async getPublicWorkById(id) {
       const publicUsers = await this.listPublicUsers();
       const managedWork = getPublicWork(id);
       if (managedWork) {
+        assertViewerCanAccessAuthor(managedWork.created_by, "Voce bloqueou o autor desta obra.");
         const author = publicUsers.find((entry) => entry.email === managedWork.created_by) || null;
         return {
           source: "managed",
@@ -1034,9 +1066,10 @@ export const base44 = {
         };
       }
 
-      const project = listPublicProjects().find((entry) => entry.id === id);
+      const project = filterVisibleProjects(listPublicProjects(), getCurrentViewerEmail()).find((entry) => entry.id === id);
       if (!project) return null;
 
+      assertViewerCanAccessAuthor(project.created_by, "Voce bloqueou o autor desta obra.");
       const author = publicUsers.find((entry) => entry.email === project.created_by) || null;
       return {
         source: "project",
@@ -1054,7 +1087,7 @@ export const base44 = {
     async listFeed() {
       const currentUser = getCurrentUserRecord();
       const publicUsers = await this.listPublicUsers();
-      const publicProjects = listPublicProjects()
+      const publicProjects = filterVisibleProjects(listPublicProjects(), getCurrentViewerEmail())
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
 
       const featuredAuthors = publicUsers
@@ -1096,7 +1129,7 @@ export const base44 = {
     },
     async listDiscoverWorks() {
       const publicUsers = await this.listPublicUsers();
-      const publicProjects = listPublicProjects()
+      const publicProjects = filterVisibleProjects(listPublicProjects(), getCurrentViewerEmail())
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date));
 
       return publicProjects.map((project) => {
@@ -1118,7 +1151,9 @@ export const base44 = {
         throw createAppError("Autor não encontrado", { status: 404 });
       }
 
-      const publicProjects = listPublicProjects()
+      assertViewerCanAccessAuthor(author.email, "Voce bloqueou este autor.");
+
+      const publicProjects = filterVisibleProjects(listPublicProjects(), getCurrentViewerEmail())
         .filter((project) => project.created_by === author.email && project.is_public)
         .sort((left, right) => new Date(right.updated_date) - new Date(left.updated_date))
         .map((project) => ({
@@ -1132,7 +1167,18 @@ export const base44 = {
           ...author,
           followers_count: (author.follower_ids || []).length,
           following_count: (author.following_ids || []).length,
-          is_following: currentUser ? (currentUser.following_ids || []).includes(author.id) : false
+          is_following: currentUser ? (currentUser.following_ids || []).includes(author.id) : false,
+          moderation_state: currentUser
+            ? {
+                isBlocked: isEitherDirectionBlocked(currentUser.email, author.email),
+                blockedByViewer: isUserBlocked(currentUser.email, author.email),
+                viewerBlockedByUser: isUserBlocked(author.email, currentUser.email)
+              }
+            : {
+                isBlocked: false,
+                blockedByViewer: false,
+                viewerBlockedByUser: false
+              }
         },
         works: publicProjects,
         posts: listPostsByAuthor(author.email),
@@ -1173,6 +1219,39 @@ export const base44 = {
       });
 
       return sanitizeUser(currentRecord);
+    }
+  },
+  moderation: {
+    async reportContent(payload) {
+      const currentUser = requireCurrentUser();
+      return createContentReport({
+        ...payload,
+        reported_by: currentUser.email
+      });
+    },
+    async blockUserByEmail(email) {
+      const currentUser = requireCurrentUser();
+      return blockUser(currentUser.email, email);
+    },
+    async unblockUserByEmail(email) {
+      const currentUser = requireCurrentUser();
+      return unblockUser(currentUser.email, email);
+    },
+    async getUserModerationState(email) {
+      const currentUser = getCurrentUserRecord();
+      if (!currentUser?.email || !email) {
+        return {
+          isBlocked: false,
+          blockedByViewer: false,
+          viewerBlockedByUser: false
+        };
+      }
+
+      return {
+        isBlocked: isEitherDirectionBlocked(currentUser.email, email),
+        blockedByViewer: isUserBlocked(currentUser.email, email),
+        viewerBlockedByUser: isUserBlocked(email, currentUser.email)
+      };
     }
   },
   integrations: {
