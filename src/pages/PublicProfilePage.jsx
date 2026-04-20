@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Ban, BarChart3, Flag, Globe, Instagram, Link as LinkIcon, Loader2, MessageSquare, PenSquare, ShieldCheck, SquarePen, Users, Vote, Youtube } from "lucide-react";
+import { Ban, BarChart3, EyeOff, Facebook, Flag, Globe, Instagram, Link as LinkIcon, Loader2, MessageSquare, PenSquare, ShieldCheck, SquarePen, Users, Vote, Youtube } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -17,6 +17,7 @@ const socialMeta = {
   twitter: { label: "X / Twitter", icon: LinkIcon },
   tiktok: { label: "TikTok", icon: LinkIcon },
   youtube: { label: "YouTube", icon: Youtube },
+  facebook: { label: "Facebook", icon: Facebook },
   website: { label: "Site", icon: Globe },
   wattpad: { label: "Wattpad", icon: PenSquare }
 };
@@ -125,6 +126,8 @@ export default function PublicProfilePage() {
   const [activeTab, setActiveTab] = useState("works");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [profileVisibility, setProfileVisibility] = useState("public");
+  const [togglingProfile, setTogglingProfile] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [moderationState, setModerationState] = useState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
@@ -144,6 +147,7 @@ export default function PublicProfilePage() {
       if (!resolvedUsername) {
         setCurrentUser(viewer);
         setProfile(null);
+        setProfileVisibility("public");
         setWorks([]);
         setPosts([]);
         setPolls([]);
@@ -151,9 +155,10 @@ export default function PublicProfilePage() {
         return;
       }
 
-      const data = await base44.social.getPublicAuthorByUsername(resolvedUsername);
+      const data = await base44.social.getAuthorProfileView(resolvedUsername);
       setCurrentUser(viewer);
       setProfile(data.author);
+      setProfileVisibility(data.visibility || "public");
       setWorks(listPublicWorksByAuthor(data.author.email).map((work) => ({ ...work, author_username: data.author.username })));
       setPosts(data.posts || []);
       setPolls(data.polls || []);
@@ -165,11 +170,12 @@ export default function PublicProfilePage() {
       console.error("Failed to load public profile", error);
       toast.error(error?.message || "Não foi possível carregar o perfil público.");
       setProfile(null);
+      setProfileVisibility("public");
       setWorks([]);
       setPosts([]);
       setPolls([]);
       setModerationState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
-      setLoadError(error?.message || "Nao foi possivel carregar o perfil publico.");
+      setLoadError(error?.message || "Não foi possível carregar o perfil público.");
     } finally {
       setLoading(false);
     }
@@ -209,16 +215,31 @@ export default function PublicProfilePage() {
     }
   }
 
+  async function handleTogglePublicProfile() {
+    if (!isOwnProfile) return;
+    setTogglingProfile(true);
+    try {
+      const nextValue = profileVisibility !== "public";
+      await base44.auth.updateMe({ public_profile: nextValue });
+      toast.success(nextValue ? "Seu perfil público foi ativado." : "Seu perfil público foi desativado.");
+      await loadProfile();
+    } catch (error) {
+      toast.error(error?.message || "Não foi possível atualizar o perfil público.");
+    } finally {
+      setTogglingProfile(false);
+    }
+  }
+
   async function handleBlockUser() {
     if (!profile?.email) return;
     try {
       await base44.moderation.blockUserByEmail(profile.email);
       setShowBlockConfirm(false);
       setModerationState({ isBlocked: true, blockedByViewer: true, viewerBlockedByUser: false });
-      toast.success("Usuario bloqueado.");
+      toast.success("Usuário bloqueado.");
       loadProfile();
     } catch (error) {
-      toast.error(error?.message || "Nao foi possivel bloquear este usuario.");
+      toast.error(error?.message || "Não foi possível bloquear este usuário.");
     }
   }
 
@@ -228,10 +249,10 @@ export default function PublicProfilePage() {
       await base44.moderation.unblockUserByEmail(profile.email);
       setShowUnblockConfirm(false);
       setModerationState({ isBlocked: false, blockedByViewer: false, viewerBlockedByUser: false });
-      toast.success("Usuario desbloqueado.");
+      toast.success("Usuário desbloqueado.");
       loadProfile();
     } catch (error) {
-      toast.error(error?.message || "Nao foi possivel desbloquear este usuario.");
+      toast.error(error?.message || "Não foi possível desbloquear este usuário.");
     }
   }
 
@@ -252,8 +273,8 @@ export default function PublicProfilePage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Users className="h-6 w-6" />
           </div>
-          <p className="text-lg font-semibold text-foreground">Perfil publico indisponivel</p>
-          <p className="mt-2 text-sm text-muted-foreground">{loadError || "Nao foi possivel localizar este perfil publico."}</p>
+          <p className="text-lg font-semibold text-foreground">Perfil público indisponível</p>
+          <p className="mt-2 text-sm text-muted-foreground">{loadError || "Não foi possível localizar este perfil público."}</p>
           <Button asChild className="mt-4">
             <Link to="/discover">Voltar para descobrir</Link>
           </Button>
@@ -284,6 +305,10 @@ export default function PublicProfilePage() {
             <div className="flex flex-wrap gap-2">
               {isOwnProfile ? (
                 <>
+                  <Button type="button" variant={profileVisibility === "public" ? "secondary" : "outline"} className="rounded-full px-5" onClick={handleTogglePublicProfile} disabled={togglingProfile}>
+                    {togglingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {profileVisibility === "public" ? "Desativar perfil público" : "Ativar perfil público"}
+                  </Button>
                   <Button type="button" variant="outline" className="rounded-full px-5" onClick={() => setShowCreatePost(true)}>
                     Novo post
                   </Button>
@@ -304,7 +329,7 @@ export default function PublicProfilePage() {
                   ) : (
                     <Button type="button" variant="outline" className="rounded-full px-5" onClick={() => setShowBlockConfirm(true)}>
                       <Ban className="mr-2 h-4 w-4" />
-                      Bloquear usuario
+                      Bloquear usuário
                     </Button>
                   )}
                 </>
@@ -321,6 +346,21 @@ export default function PublicProfilePage() {
           </div>
 
           {profile.bio ? <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">{profile.bio}</p> : null}
+
+          {isOwnProfile && profileVisibility !== "public" ? (
+            <div className="mt-5 rounded-2xl border border-amber-300/40 bg-amber-500/10 p-4 text-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold text-foreground">Seu perfil público está desativado</p>
+                  <p className="mt-1 text-muted-foreground">Ative seu perfil para aparecer publicamente. Enquanto isso, esta página continua disponível só para você.</p>
+                </div>
+                <Button type="button" onClick={handleTogglePublicProfile} disabled={togglingProfile} className="gap-2">
+                  {togglingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
+                  Ativar perfil
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {visibleLinks.length ? (
             <div className="mt-5 flex flex-wrap gap-2">
@@ -445,23 +485,23 @@ export default function PublicProfilePage() {
         }}
         contentType={reportTarget?.question ? "public_poll" : "public_post"}
         contentId={reportTarget?.id || ""}
-        contentTitle={reportTarget?.question || reportTarget?.content?.slice(0, 80) || "Conteudo publico"}
+        contentTitle={reportTarget?.question || reportTarget?.content?.slice(0, 80) || "Conteúdo público"}
         contentAuthorEmail={profile?.email || ""}
-        triggerLabel="Denunciar conteudo"
+        triggerLabel="Denunciar conteúdo"
       />
       <ConfirmDialog
         open={showBlockConfirm}
         onOpenChange={setShowBlockConfirm}
-        title="Bloquear este usuario?"
-        description="Ao bloquear esta conta, o app passa a ocultar perfil e conteudos publicos dela sempre que isso for possivel na camada atual."
+        title="Bloquear este usuário?"
+        description="Ao bloquear esta conta, o app passa a ocultar perfil e conteúdos públicos dela sempre que isso for possível na camada atual."
         onConfirm={handleBlockUser}
         destructive
       />
       <ConfirmDialog
         open={showUnblockConfirm}
         onOpenChange={setShowUnblockConfirm}
-        title="Desbloquear este usuario?"
-        description="Ao desbloquear, o perfil publico e os conteudos desse usuario voltam a ficar acessiveis para a sua conta."
+        title="Desbloquear este usuário?"
+        description="Ao desbloquear, o perfil público e os conteúdos desse usuário voltam a ficar acessíveis para a sua conta."
         onConfirm={handleUnblockUser}
       />
     </div>

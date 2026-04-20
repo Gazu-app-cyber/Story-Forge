@@ -135,6 +135,21 @@ export function updatePublicWork(id, patch, userEmail) {
   return clone(current[index]);
 }
 
+export function setPublicWorkCommentCount(workId, count) {
+  const current = listPublicWorks();
+  const index = current.findIndex((entry) => entry.id === workId);
+  if (index === -1) return null;
+
+  current[index] = normalizePublicWork({
+    ...current[index],
+    public_comments: Math.max(0, Number(count) || 0),
+    updated_date: nowIso()
+  });
+
+  writeStorage(current);
+  return clone(current[index]);
+}
+
 export function deletePublicWork(id, userEmail) {
   const current = listPublicWorks();
   const filtered = current.filter((entry) => !(entry.id === id && entry.created_by === userEmail));

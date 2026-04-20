@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { Globe, ImagePlus, Instagram, Loader2, LogOut, Moon, Palette, Save, Smartphone, Trash2, Type, User, Youtube } from "lucide-react";
+import { Facebook, Globe, ImagePlus, Instagram, Loader2, LogOut, Moon, Palette, Save, Smartphone, Trash2, Type, User, Youtube } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -49,6 +49,7 @@ const socialFields = [
   { key: "twitter", label: "X / Twitter", icon: Globe, placeholder: "https://x.com/seu_perfil" },
   { key: "tiktok", label: "TikTok", icon: Globe, placeholder: "https://tiktok.com/@seu_perfil" },
   { key: "youtube", label: "YouTube", icon: Youtube, placeholder: "https://youtube.com/@seu_canal" },
+  { key: "facebook", label: "Facebook", icon: Facebook, placeholder: "https://facebook.com/seu_perfil" },
   { key: "website", label: "Site pessoal", icon: Globe, placeholder: "https://seusite.com" },
   { key: "wattpad", label: "Wattpad", icon: Globe, placeholder: "https://www.wattpad.com/user/seuperfil" }
 ];
@@ -66,12 +67,13 @@ export default function Settings() {
   const [bio, setBio] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [profileBanner, setProfileBanner] = useState("");
-  const [publicProfile, setPublicProfile] = useState(true);
+  const [publicProfile, setPublicProfile] = useState(false);
   const [socialLinks, setSocialLinks] = useState({
     instagram: "",
     twitter: "",
     tiktok: "",
     youtube: "",
+    facebook: "",
     website: "",
     wattpad: ""
   });
@@ -100,6 +102,7 @@ export default function Settings() {
           twitter: currentUser.social_links?.twitter || "",
           tiktok: currentUser.social_links?.tiktok || "",
           youtube: currentUser.social_links?.youtube || "",
+          facebook: currentUser.social_links?.facebook || "",
           website: currentUser.social_links?.website || "",
           wattpad: currentUser.social_links?.wattpad || ""
         });
@@ -290,13 +293,20 @@ export default function Settings() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-foreground">Perfil público do autor</p>
-                <p className="text-sm text-muted-foreground">Ative para aparecer na camada social e compartilhar sua vitrine.</p>
+                <p className="text-sm text-muted-foreground">
+                  {publicProfile
+                    ? "Seu perfil está publicado e pode aparecer nas rotas públicas do app."
+                    : "Seu perfil começa privado. Ative manualmente quando quiser aparecer publicamente."}
+                </p>
               </div>
               <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
             </div>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className={cn("rounded-full px-3 py-1 text-xs font-medium", publicProfile ? "bg-emerald-500/10 text-emerald-700" : "bg-muted text-muted-foreground")}>
+                {publicProfile ? "Perfil público ativo" : "Perfil público desativado"}
+              </span>
               <Button asChild variant="outline" size="sm">
-                <Link to="/public-profile">Ver perfil público</Link>
+                <Link to="/public-profile">{publicProfile ? "Abrir perfil público" : "Gerenciar perfil público"}</Link>
               </Button>
             </div>
           </div>
