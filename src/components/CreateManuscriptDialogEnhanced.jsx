@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
+import { createDefaultManuscriptStructure } from "@/lib/manuscriptStructure";
 import { manuscriptTypes } from "@/lib/manuscriptTypes";
 import { checkFeatureAccess } from "@/lib/planLimits";
 import { getStoryTemplateById, STORY_TEMPLATES } from "@/lib/storyTemplates";
@@ -26,7 +27,7 @@ export default function CreateManuscriptDialogEnhanced({ open, onOpenChange, pro
     setName(editManuscript?.name || "");
     setType(editManuscript?.type || manuscriptTypes[0] || "Capitulo");
     setImage(editManuscript?.image || "");
-    setTemplateId("blank");
+    setTemplateId(editManuscript?.template_id || "blank");
   }, [editManuscript, open]);
 
   useEffect(() => {
@@ -59,6 +60,8 @@ export default function CreateManuscriptDialogEnhanced({ open, onOpenChange, pro
       image,
       content: editManuscript?.content || (canUseTemplates ? selectedTemplate.content : ""),
       layout: editManuscript?.layout || (canUseTemplates ? selectedTemplate.layout : DEFAULT_DOCUMENT_LAYOUT),
+      template_id: editManuscript?.template_id || (canUseTemplates ? selectedTemplate.id : "blank"),
+      structure_json: editManuscript?.structure_json || createDefaultManuscriptStructure(canUseTemplates ? selectedTemplate.id : "blank"),
       project_id: projectId
     };
 

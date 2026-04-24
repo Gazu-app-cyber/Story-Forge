@@ -111,6 +111,8 @@ export default function ProjectView() {
       image: manuscript.image,
       content: manuscript.content,
       layout: manuscript.layout || DEFAULT_DOCUMENT_LAYOUT,
+      template_id: manuscript.template_id || "blank",
+      structure_json: manuscript.structure_json || null,
       project_id: id
     });
     loadData();

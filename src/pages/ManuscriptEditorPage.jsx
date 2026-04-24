@@ -7,11 +7,13 @@ import { AlignJustify, ArrowLeft, BookOpen, Check, Clock, Columns2, Download, El
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import AdaptiveSelect from "@/components/AdaptiveSelect";
+import AdvancedManuscriptStudio from "@/components/manuscript/AdvancedManuscriptStudio";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { columnOptions, DEFAULT_DOCUMENT_LAYOUT, getDocumentLayoutStyle, marginOptions, normalizeDocumentLayout, orientationOptions, pageSizeOptions } from "@/lib/documentLayout";
 import { exportManuscriptAsDocx, exportManuscriptAsHtml, exportManuscriptAsPdf } from "@/lib/manuscriptExport";
+import { createDefaultManuscriptStructure, normalizeManuscriptStructure } from "@/lib/manuscriptStructure";
 import { getTypeColor, getTypeIcon } from "@/lib/manuscriptTypes";
 import { checkFeatureAccess, checkWordLimit, countWordsFromHtml, getWritingStats } from "@/lib/planLimits";
 import { cn } from "@/lib/utils";
@@ -97,6 +99,7 @@ export default function ManuscriptEditorPage() {
   const nameInputRef = useRef(null);
   const latestContentRef = useRef("");
   const latestLayoutRef = useRef(DEFAULT_DOCUMENT_LAYOUT);
+  const latestStructureRef = useRef(createDefaultManuscriptStructure("blank"));
   const wordLimitWarningRef = useRef(false);
   const previousWordCountRef = useRef(0);
   const streakDeltaRef = useRef(0);
@@ -106,6 +109,7 @@ export default function ManuscriptEditorPage() {
   const [project, setProject] = useState(null);
   const [content, setContent] = useState("");
   const [layout, setLayout] = useState(DEFAULT_DOCUMENT_LAYOUT);
+  const [structure, setStructure] = useState(createDefaultManuscriptStructure("blank"));
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -122,13 +126,19 @@ export default function ManuscriptEditorPage() {
         if (currentManuscript) {
           const nextContent = currentManuscript.content || "";
           const nextLayout = normalizeDocumentLayout(currentManuscript.layout);
+          const nextStructure = normalizeManuscriptStructure(
+            currentManuscript.structure_json || currentManuscript.structure,
+            currentManuscript.template_id || "blank"
+          );
           setManuscript(currentManuscript);
           setContent(nextContent);
           setLayout(nextLayout);
+          setStructure(nextStructure);
           setName(currentManuscript.name);
           setUser(currentUser);
           latestContentRef.current = nextContent;
           latestLayoutRef.current = nextLayout;
+          latestStructureRef.current = nextStructure;
           previousWordCountRef.current = countWordsFromHtml(nextContent);
           const projectList = await base44.entities.Project.filter({ id: currentManuscript.project_id });
           setProject(projectList[0]);
@@ -168,9 +178,13 @@ export default function ManuscriptEditorPage() {
   const pageStyle = useMemo(() => getDocumentLayoutStyle(layout, editorFont, editorSize), [layout, editorFont, editorSize]);
 
   const saveDocument = useCallback(
-    async (newContent, nextLayout) => {
+    async (newContent, nextLayout, nextStructure) => {
       setSavingState("saving");
-      await base44.entities.Manuscript.update(id, { content: newContent, layout: nextLayout });
+      await base44.entities.Manuscript.update(id, {
+        content: newContent,
+        layout: nextLayout,
+        structure_json: nextStructure
+      });
       setSavingState("saved");
       setTimeout(() => setSavingState("idle"), 2500);
     },
@@ -178,12 +192,13 @@ export default function ManuscriptEditorPage() {
   );
 
   const queueSave = useCallback(
-    (nextContent, nextLayout) => {
+    (nextContent, nextLayout, nextStructure = latestStructureRef.current) => {
       latestContentRef.current = nextContent;
       latestLayoutRef.current = nextLayout;
+      latestStructureRef.current = nextStructure;
       setSavingState("saving");
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => saveDocument(latestContentRef.current, latestLayoutRef.current), 900);
+      saveTimeout.current = setTimeout(() => saveDocument(latestContentRef.current, latestLayoutRef.current, latestStructureRef.current), 900);
     },
     [saveDocument]
   );
@@ -269,7 +284,7 @@ export default function ManuscriptEditorPage() {
     const delta = Math.max(nextWordCount - previousWordCountRef.current, 0);
     previousWordCountRef.current = nextWordCount;
     setContent(value);
-    queueSave(value, latestLayoutRef.current);
+    queueSave(value, latestLayoutRef.current, latestStructureRef.current);
 
     if (delta > 0) {
       streakDeltaRef.current += delta;
@@ -290,7 +305,12 @@ export default function ManuscriptEditorPage() {
   function updateLayout(patch) {
     const nextLayout = normalizeDocumentLayout({ ...latestLayoutRef.current, ...patch });
     setLayout(nextLayout);
-    queueSave(latestContentRef.current, nextLayout);
+    queueSave(latestContentRef.current, nextLayout, latestStructureRef.current);
+  }
+
+  function handleStructureChange(nextStructure) {
+    setStructure(nextStructure);
+    queueSave(latestContentRef.current, latestLayoutRef.current, nextStructure);
   }
 
   async function handleNameSave() {
@@ -494,6 +514,10 @@ export default function ManuscriptEditorPage() {
             Você atingiu o limite do plano gratuito. Faça upgrade para continuar.
           </div>
         ) : null}
+
+        <div className="mb-4">
+          <AdvancedManuscriptStudio structure={structure} onChange={handleStructureChange} />
+        </div>
 
         <div className="mb-4 grid gap-3 rounded-2xl border border-border bg-card p-4 md:grid-cols-4">
           <div>

@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { normalizeManuscriptStructure } from "@/lib/manuscriptStructure";
 import { getTypeColor, getTypeIcon } from "@/lib/manuscriptTypes";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +18,20 @@ moment.locale("pt-br");
 export default function ManuscriptCard({ manuscript, onToggleFavorite, onDelete, onEdit, onDuplicate }) {
   const TypeIcon = getTypeIcon(manuscript.type);
   const typeColor = getTypeColor(manuscript.type);
-  const preview = manuscript.content ? manuscript.content.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 110) : "";
+  const structure = manuscript.structure_json ? normalizeManuscriptStructure(manuscript.structure_json, manuscript.template_id || "blank") : null;
+  const fallbackPreview = structure
+    ? [
+        structure.modules.general.synopsis,
+        ...structure.modules.plot.chapters.map((chapter) => chapter.summary || chapter.title),
+        ...structure.modules.plot.blocks.map((block) => block.text || block.title)
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 110)
+    : "";
+  const preview = manuscript.content ? manuscript.content.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 110) : fallbackPreview;
   const hasActions = onEdit || onDuplicate || onDelete || onToggleFavorite;
 
   return (
