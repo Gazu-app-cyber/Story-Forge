@@ -12,7 +12,8 @@ export function DrawerContent({ className, children, ...props }) {
     <DrawerPrimitive.Portal>
       <DrawerOverlay />
       <DrawerPrimitive.Content
-        className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 rounded-t-[1.5rem] border border-border bg-card p-4 shadow-xl", className)}
+        className={cn("fixed inset-x-0 bottom-0 z-50 mt-24 rounded-t-[1.5rem] border border-border bg-card p-4 shadow-xl overscroll-contain [-webkit-overflow-scrolling:touch]", className)}
+        data-ui-layer="drawer"
         {...props}
       >
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />

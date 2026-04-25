@@ -48,9 +48,21 @@ export default function LayoutShellFixed() {
     return location.pathname === path;
   }
 
+  function handleBackNavigation() {
+    const historyIndex = window.history.state?.idx ?? 0;
+    if (historyIndex > 0) {
+      navigate(-1);
+      return;
+    }
+
+    if (pageMeta?.backTo) {
+      navigate(pageMeta.backTo, { replace: true });
+    }
+  }
+
   return (
     <div className="flex min-h-[100dvh] bg-background lg:h-screen lg:overflow-hidden">
-      {sidebarOpen ? <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
+      {sidebarOpen ? <div data-ui-layer="sidebar" data-state="open" className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
 
       <aside
         className={cn(
@@ -65,7 +77,7 @@ export default function LayoutShellFixed() {
             </div>
             <span className="font-semibold tracking-tight text-sidebar-foreground">StoryForge</span>
           </Link>
-          <button className="text-muted-foreground lg:hidden" onClick={() => setSidebarOpen(false)}>
+          <button data-ui-close="true" className="text-muted-foreground lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -171,7 +183,7 @@ export default function LayoutShellFixed() {
         <div className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur lg:hidden" style={{ paddingTop: "var(--safe-top)" }}>
           <div className="flex items-center gap-3 px-4 py-3">
             {pageMeta ? (
-              <button onClick={() => navigate(pageMeta.backTo)} className="text-foreground/70 transition-colors hover:text-foreground">
+              <button onClick={handleBackNavigation} className="text-foreground/70 transition-colors hover:text-foreground">
                 <ArrowLeft className="h-5 w-5" />
               </button>
             ) : (

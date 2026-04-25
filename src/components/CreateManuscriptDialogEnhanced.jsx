@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { DEFAULT_DOCUMENT_LAYOUT } from "@/lib/documentLayout";
 import { createDefaultManuscriptStructure } from "@/lib/manuscriptStructure";
 import { manuscriptTypes } from "@/lib/manuscriptTypes";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { checkFeatureAccess } from "@/lib/planLimits";
 import { getStoryTemplateById, STORY_TEMPLATES } from "@/lib/storyTemplates";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ export default function CreateManuscriptDialogEnhanced({ open, onOpenChange, pro
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setName(editManuscript?.name || "");
@@ -36,6 +38,14 @@ export default function CreateManuscriptDialogEnhanced({ open, onOpenChange, pro
   }, [open]);
 
   const typeOptions = useMemo(() => manuscriptTypes.map((item) => ({ value: item, label: item })), []);
+  const templateOptions = useMemo(
+    () =>
+      STORY_TEMPLATES.map((template) => ({
+        value: template.id,
+        label: `${template.name} • ${template.category}`
+      })),
+    []
+  );
   const canUseTemplates = checkFeatureAccess("templates", user);
   const selectedTemplate = useMemo(() => getStoryTemplateById(templateId), [templateId]);
 
@@ -84,7 +94,7 @@ export default function CreateManuscriptDialogEnhanced({ open, onOpenChange, pro
         <DialogHeader>
           <DialogTitle>{editManuscript ? "Editar Manuscrito" : "Novo Manuscrito"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="max-h-[72dvh] space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 [-webkit-overflow-scrolling:touch]">
           <div>
             <Label>Nome</Label>
             <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nome do manuscrito..." className="mt-1.5" />
@@ -104,29 +114,40 @@ export default function CreateManuscriptDialogEnhanced({ open, onOpenChange, pro
                 <p className="mt-1 text-xs text-muted-foreground">Escolha um ponto de partida rico para abrir o manuscrito com estrutura, perguntas e dicas praticas do genero.</p>
               </div>
 
-              <div className="grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                {STORY_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => setTemplateId(template.id)}
-                    className={cn(
-                      "rounded-2xl border p-3 text-left transition-all",
-                      template.id === templateId ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-foreground">{template.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{template.category}</p>
+              {isMobile ? (
+                <AdaptiveSelect
+                  value={templateId}
+                  onValueChange={setTemplateId}
+                  options={templateOptions}
+                  placeholder="Escolha um template"
+                  title="Templates de manuscrito"
+                  description="Selecione o modelo de historia sem precisar rolar uma grade longa dentro do dialog."
+                />
+              ) : (
+                <div className="grid max-h-72 gap-2 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch] sm:grid-cols-2">
+                  {STORY_TEMPLATES.map((template) => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => setTemplateId(template.id)}
+                      className={cn(
+                        "rounded-2xl border p-3 text-left transition-all",
+                        template.id === templateId ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-foreground">{template.name}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{template.category}</p>
+                        </div>
+                        <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">{template.detailLevel}</span>
                       </div>
-                      <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">{template.detailLevel}</span>
-                    </div>
-                    <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{template.description}</p>
-                    <p className="mt-2 text-[11px] font-medium text-primary">{template.format}</p>
-                  </button>
-                ))}
-              </div>
+                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{template.description}</p>
+                      <p className="mt-2 text-[11px] font-medium text-primary">{template.format}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {selectedTemplate.id !== "blank" ? (
                 <div className="rounded-2xl border border-border bg-card p-4">
