@@ -434,13 +434,13 @@ export default function AuthPageResolved() {
   function renderAuthForm() {
     return (
       <>
-        <div className="mb-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900/70">
+        <div className="mb-6 grid grid-cols-2 rounded-2xl border border-stone-200 bg-stone-100/90 p-1 dark:border-stone-800 dark:bg-stone-900">
           <button
             type="button"
             onClick={() => switchMode("login")}
             className={mode === "login"
-              ? "rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm dark:bg-slate-200 dark:text-slate-950"
-              : "rounded-xl px-4 py-3 text-sm font-semibold text-slate-500 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"}
+              ? "rounded-xl bg-white px-4 py-3 text-sm font-semibold text-stone-950 shadow-sm dark:bg-amber-400 dark:text-stone-950"
+              : "rounded-xl px-4 py-3 text-sm font-semibold text-stone-600 transition hover:text-stone-950 dark:text-stone-300 dark:hover:text-stone-50"}
           >
             Sign in
           </button>
@@ -448,8 +448,8 @@ export default function AuthPageResolved() {
             type="button"
             onClick={() => switchMode("register")}
             className={mode === "register"
-              ? "rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm dark:bg-slate-200 dark:text-slate-950"
-              : "rounded-xl px-4 py-3 text-sm font-semibold text-slate-500 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"}
+              ? "rounded-xl bg-white px-4 py-3 text-sm font-semibold text-stone-950 shadow-sm dark:bg-amber-400 dark:text-stone-950"
+              : "rounded-xl px-4 py-3 text-sm font-semibold text-stone-600 transition hover:text-stone-950 dark:text-stone-300 dark:hover:text-stone-50"}
           >
             Sign up
           </button>
@@ -502,7 +502,7 @@ export default function AuthPageResolved() {
           <ErrorPanel message={submitError} />
           {renderDeliveryCard()}
 
-          <Button type="submit" form="auth-form" disabled={loading} className="h-14 w-full rounded-2xl bg-slate-900 text-base font-semibold text-white shadow-lg shadow-slate-900/15 hover:bg-slate-800 disabled:bg-slate-700/70 dark:bg-amber-500 dark:text-slate-950 dark:shadow-amber-500/10 dark:hover:bg-amber-400 dark:disabled:bg-amber-600/70">
+            <Button type="submit" form="auth-form" disabled={loading} className="h-14 w-full rounded-2xl bg-stone-900 text-base font-semibold text-white shadow-lg shadow-stone-900/15 hover:bg-stone-800 disabled:bg-stone-700/70 dark:bg-amber-400 dark:text-stone-950 dark:shadow-amber-950/10 dark:hover:bg-amber-300 dark:disabled:bg-stone-700 dark:disabled:text-stone-300">
             {loading ? "Processando..." : mode === "login" ? "Sign in" : "Create account"}
           </Button>
 
@@ -511,7 +511,7 @@ export default function AuthPageResolved() {
               <button
                 type="button"
                 onClick={() => setForgotPasswordOpen((current) => !current)}
-                className="text-sm font-medium text-slate-500 underline-offset-4 transition hover:text-slate-900 hover:underline dark:text-slate-300 dark:hover:text-white"
+                className="text-sm font-medium text-stone-600 underline-offset-4 transition hover:text-stone-900 hover:underline dark:text-amber-200 dark:hover:text-amber-100"
               >
                 Forgot your password?
               </button>
@@ -538,36 +538,36 @@ export default function AuthPageResolved() {
   }
 
   return (
-    <div className="mobile-auth-shell relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(125,94,63,0.18),_transparent_38%),linear-gradient(180deg,_#f6f0e8_0%,_#efe5d8_100%)] px-4 py-8 dark:bg-[radial-gradient(circle_at_top,_rgba(168,120,72,0.18),_transparent_38%),linear-gradient(180deg,_#15110c_0%,_#1f1811_100%)] sm:px-6 sm:py-12">
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.6),transparent_42%,rgba(109,78,48,0.08))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.03),transparent_42%,rgba(245,158,11,0.08))]" />
+    <div className="mobile-auth-shell relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(125,94,63,0.18),_transparent_38%),linear-gradient(180deg,_#f7f1e8_0%,_#ebe0d1_100%)] px-4 py-8 dark:bg-[radial-gradient(circle_at_top,_rgba(176,124,61,0.14),_transparent_34%),linear-gradient(180deg,_#120f0d_0%,_#191512_52%,_#221c17_100%)] sm:px-6 sm:py-12">
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.62),transparent_42%,rgba(109,78,48,0.08))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.02),transparent_42%,rgba(245,158,11,0.05))]" />
 
-      <div className="relative w-full max-w-xl rounded-[32px] border border-stone-200/80 bg-white/95 p-5 shadow-[0_30px_80px_rgba(65,47,26,0.16)] backdrop-blur dark:border-stone-800 dark:bg-stone-950/92 dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-stone-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:bg-amber-500 sm:mb-8 sm:h-28 sm:w-28">
+      <div className="relative w-full max-w-xl rounded-[32px] border border-stone-200/80 bg-white/95 p-5 shadow-[0_30px_80px_rgba(65,47,26,0.16)] backdrop-blur dark:border-stone-700/80 dark:bg-[#1f1915]/96 dark:shadow-[0_30px_80px_rgba(0,0,0,0.52)] sm:p-8">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-stone-900 shadow-[0_18px_50px_rgba(15,23,42,0.16)] dark:bg-amber-400 sm:mb-8 sm:h-28 sm:w-28">
           <PenTool className="h-9 w-9 text-amber-300 dark:text-stone-950 sm:h-12 sm:w-12" strokeWidth={1.8} />
         </div>
 
         <div className="mb-6 text-center sm:mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-stone-50 sm:text-5xl">{activeTitle}</h1>
-          <p className="mt-3 text-base text-slate-500 dark:text-stone-300 sm:mt-4 sm:text-xl">{activeSubtitle}</p>
+          <p className="mt-3 text-base text-stone-600 dark:text-stone-300 sm:mt-4 sm:text-xl">{activeSubtitle}</p>
         </div>
 
         {isVerificationScreen ? renderVerificationScreen() : isPasswordResetScreen ? renderPasswordResetScreen() : renderAuthForm()}
 
         {!isVerificationScreen && !isPasswordResetScreen ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+          <div className="mt-6 rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-900/90 dark:text-stone-300">
             Demo local: <span className="font-semibold text-slate-700 dark:text-slate-100">demo@storyforge.app</span> /{" "}
             <span className="font-semibold text-slate-700 dark:text-slate-100">storyforge</span>
           </div>
         ) : null}
 
-        <p className="mt-5 text-center text-xs leading-6 text-slate-500 dark:text-stone-400 sm:text-sm">
+        <p className="mt-5 text-center text-xs leading-6 text-stone-600 dark:text-stone-400 sm:text-sm">
           Ao usar o StoryForge, você pode consultar nossa{" "}
           <Link to="/privacy" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900 dark:text-stone-100 dark:hover:text-white">
             Política de Privacidade
           </Link>
           .
         </p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 dark:text-stone-400 sm:text-sm">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-stone-600 dark:text-stone-400 sm:text-sm">
           <Link to="/terms" className="font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900 dark:text-stone-100 dark:hover:text-white">
             Termos de Uso
           </Link>
@@ -588,16 +588,16 @@ export default function AuthPageResolved() {
 function FormInputField({ label, icon: Icon, value, onChange, error, placeholder, type = "text" }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-center text-sm font-semibold text-slate-700 dark:text-stone-200">{label}</span>
+      <span className="mb-2 block text-center text-sm font-semibold text-stone-700 dark:text-stone-200">{label}</span>
       <div className="relative">
-        <Icon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-stone-500" />
+        <Icon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
         <Input
           type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           aria-invalid={Boolean(error)}
-          className="h-14 rounded-2xl border-slate-300 bg-white/90 pl-12 text-base text-slate-900 placeholder:text-slate-400 dark:border-stone-700 dark:bg-stone-900/90 dark:text-stone-50 dark:placeholder:text-stone-500"
+          className="h-14 rounded-2xl border-stone-300 bg-white/90 pl-12 text-base text-stone-950 placeholder:text-stone-400 dark:border-stone-700 dark:bg-[#16120f] dark:text-stone-50 dark:placeholder:text-stone-400"
         />
       </div>
       {error ? <p className="mt-2 text-sm font-medium text-rose-600 dark:text-rose-300">{error}</p> : null}
@@ -608,18 +608,18 @@ function FormInputField({ label, icon: Icon, value, onChange, error, placeholder
 function FormPasswordField({ label, value, onChange, error, show, onToggle, placeholder }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-center text-sm font-semibold text-slate-700 dark:text-stone-200">{label}</span>
+      <span className="mb-2 block text-center text-sm font-semibold text-stone-700 dark:text-stone-200">{label}</span>
       <div className="relative">
-        <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-stone-500" />
+        <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
         <Input
           type={show ? "text" : "password"}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           aria-invalid={Boolean(error)}
-          className="h-14 rounded-2xl border-slate-300 bg-white/90 pl-12 pr-12 text-base text-slate-900 placeholder:text-slate-400 dark:border-stone-700 dark:bg-stone-900/90 dark:text-stone-50 dark:placeholder:text-stone-500"
+          className="h-14 rounded-2xl border-stone-300 bg-white/90 pl-12 pr-12 text-base text-stone-950 placeholder:text-stone-400 dark:border-stone-700 dark:bg-[#16120f] dark:text-stone-50 dark:placeholder:text-stone-400"
         />
-        <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700 dark:text-stone-500 dark:hover:text-stone-200">
+        <button type="button" onClick={onToggle} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 transition hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-100">
           {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>
       </div>
